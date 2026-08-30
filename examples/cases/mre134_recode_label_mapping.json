@@ -1,0 +1,722 @@
+{
+  "schema_version": "1.0",
+  "source": {
+    "name": "MRE134 publication ROI vocabulary",
+    "contains_label_volume": false,
+    "note": "The released MRE134 NIfTI files are continuous property maps. These names describe the publication's ROI masks, which are not included in MRE134-master."
+  },
+  "target": {
+    "name": "ReCoDE active LS-DYNA part vocabulary",
+    "definition": "data/external/ReCoDE-brain-mesh-creation-main/src/dependencies/simulation/part_list_full.k"
+  },
+  "semantics": {
+    "exact-bilateral": "same structure; union the left/right ReCoDE parts",
+    "aggregate": "combine several ReCoDE parts into one broad comparison region",
+    "partitioned": "same structure split into several ReCoDE parts",
+    "broader-recode": "ReCoDE target is less specific than the MRE134 ROI",
+    "no-direct-match": "no defensible part-only mapping"
+  },
+  "summary": {
+    "mre134_labels": 34,
+    "match_kind_counts": {
+      "no-direct-match": 1,
+      "aggregate": 2,
+      "broader-recode": 24,
+      "exact-bilateral": 6,
+      "partitioned": 1
+    }
+  },
+  "mappings": [
+    {
+      "mre134_label": "Whole brain",
+      "abbreviation": "Global",
+      "category": "global",
+      "unified_label": "Whole brain (ventricles excluded)",
+      "recode_parts": [],
+      "match_kind": "no-direct-match",
+      "note": "MRE134 uses a whole-brain mask excluding ventricles; ReCoDE has no single equivalent part."
+    },
+    {
+      "mre134_label": "White matter",
+      "abbreviation": "WM",
+      "category": "global",
+      "unified_label": "White matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 7,
+          "label": "Left-Cerebellum-White-Matter"
+        },
+        {
+          "part_id": 46,
+          "label": "Right-Cerebellum-White-Matter"
+        },
+        {
+          "part_id": 77,
+          "label": "WM-hypointensities"
+        },
+        {
+          "part_id": 85,
+          "label": "Optic-Chiasm"
+        },
+        {
+          "part_id": 251,
+          "label": "CC_Posterior"
+        },
+        {
+          "part_id": 252,
+          "label": "CC_Mid_Posterior"
+        },
+        {
+          "part_id": 253,
+          "label": "CC_Central"
+        },
+        {
+          "part_id": 254,
+          "label": "CC_Mid_Anterior"
+        },
+        {
+          "part_id": 255,
+          "label": "CC_Anterior"
+        }
+      ],
+      "match_kind": "aggregate",
+      "note": "Combine ReCoDE parts assigned to its broad white-matter tissue group."
+    },
+    {
+      "mre134_label": "Subcortical gray matter",
+      "abbreviation": "SGM",
+      "category": "global",
+      "unified_label": "Subcortical grey matter",
+      "recode_parts": [
+        {
+          "part_id": 18,
+          "label": "Left-Amygdala"
+        },
+        {
+          "part_id": 54,
+          "label": "Right-Amygdala"
+        },
+        {
+          "part_id": 11,
+          "label": "Left-Caudate"
+        },
+        {
+          "part_id": 50,
+          "label": "Right-Caudate"
+        },
+        {
+          "part_id": 17,
+          "label": "Left-Hippocampus"
+        },
+        {
+          "part_id": 53,
+          "label": "Right-Hippocampus"
+        },
+        {
+          "part_id": 13,
+          "label": "Left-Pallidum"
+        },
+        {
+          "part_id": 52,
+          "label": "Right-Pallidum"
+        },
+        {
+          "part_id": 12,
+          "label": "Left-Putamen"
+        },
+        {
+          "part_id": 51,
+          "label": "Right-Putamen"
+        },
+        {
+          "part_id": 10,
+          "label": "Left-Thalamus-Proper*"
+        },
+        {
+          "part_id": 49,
+          "label": "Right-Thalamus-Proper*"
+        }
+      ],
+      "match_kind": "aggregate",
+      "note": "Both sources define this aggregate from the six mapped subcortical structures."
+    },
+    {
+      "mre134_label": "Cortical gray matter",
+      "abbreviation": "CGM",
+      "category": "global",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "MRE134 combines selected cortical ROIs; ReCoDE's bilateral cerebral-cortex parts are broader."
+    },
+    {
+      "mre134_label": "Amygdala",
+      "abbreviation": "AM",
+      "category": "subcortical-gray-matter",
+      "unified_label": "Amygdala",
+      "recode_parts": [
+        {
+          "part_id": 18,
+          "label": "Left-Amygdala"
+        },
+        {
+          "part_id": 54,
+          "label": "Right-Amygdala"
+        }
+      ],
+      "match_kind": "exact-bilateral",
+      "note": "MRE134 reports one bilateral ROI; combine the left and right ReCoDE parts."
+    },
+    {
+      "mre134_label": "Caudate",
+      "abbreviation": "CA",
+      "category": "subcortical-gray-matter",
+      "unified_label": "Caudate",
+      "recode_parts": [
+        {
+          "part_id": 11,
+          "label": "Left-Caudate"
+        },
+        {
+          "part_id": 50,
+          "label": "Right-Caudate"
+        }
+      ],
+      "match_kind": "exact-bilateral",
+      "note": "MRE134 reports one bilateral ROI; combine the left and right ReCoDE parts."
+    },
+    {
+      "mre134_label": "Hippocampus",
+      "abbreviation": "HC",
+      "category": "subcortical-gray-matter",
+      "unified_label": "Hippocampus",
+      "recode_parts": [
+        {
+          "part_id": 17,
+          "label": "Left-Hippocampus"
+        },
+        {
+          "part_id": 53,
+          "label": "Right-Hippocampus"
+        }
+      ],
+      "match_kind": "exact-bilateral",
+      "note": "MRE134 reports one bilateral ROI; combine the left and right ReCoDE parts."
+    },
+    {
+      "mre134_label": "Pallidum",
+      "abbreviation": "PA",
+      "category": "subcortical-gray-matter",
+      "unified_label": "Pallidum",
+      "recode_parts": [
+        {
+          "part_id": 13,
+          "label": "Left-Pallidum"
+        },
+        {
+          "part_id": 52,
+          "label": "Right-Pallidum"
+        }
+      ],
+      "match_kind": "exact-bilateral",
+      "note": "MRE134 reports one bilateral ROI; combine the left and right ReCoDE parts."
+    },
+    {
+      "mre134_label": "Putamen",
+      "abbreviation": "PU",
+      "category": "subcortical-gray-matter",
+      "unified_label": "Putamen",
+      "recode_parts": [
+        {
+          "part_id": 12,
+          "label": "Left-Putamen"
+        },
+        {
+          "part_id": 51,
+          "label": "Right-Putamen"
+        }
+      ],
+      "match_kind": "exact-bilateral",
+      "note": "MRE134 reports one bilateral ROI; combine the left and right ReCoDE parts."
+    },
+    {
+      "mre134_label": "Thalamus",
+      "abbreviation": "TH",
+      "category": "subcortical-gray-matter",
+      "unified_label": "Thalamus",
+      "recode_parts": [
+        {
+          "part_id": 10,
+          "label": "Left-Thalamus-Proper*"
+        },
+        {
+          "part_id": 49,
+          "label": "Right-Thalamus-Proper*"
+        }
+      ],
+      "match_kind": "exact-bilateral",
+      "note": "MRE134 reports one bilateral ROI; combine ReCoDE's left/right Thalamus-Proper parts."
+    },
+    {
+      "mre134_label": "Corticospinal tract",
+      "abbreviation": "CST",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Anterior thalamic radiation",
+      "abbreviation": "ATR",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Posterior thalamic radiation",
+      "abbreviation": "PTR",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Corona radiata",
+      "abbreviation": "CRa",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Corpus callosum",
+      "abbreviation": "CC",
+      "category": "white-matter-tract",
+      "unified_label": "Corpus callosum",
+      "recode_parts": [
+        {
+          "part_id": 251,
+          "label": "CC_Posterior"
+        },
+        {
+          "part_id": 252,
+          "label": "CC_Mid_Posterior"
+        },
+        {
+          "part_id": 253,
+          "label": "CC_Central"
+        },
+        {
+          "part_id": 254,
+          "label": "CC_Mid_Anterior"
+        },
+        {
+          "part_id": 255,
+          "label": "CC_Anterior"
+        }
+      ],
+      "match_kind": "partitioned",
+      "note": "Combine the five anterior-to-posterior ReCoDE corpus-callosum parts."
+    },
+    {
+      "mre134_label": "Major forceps",
+      "abbreviation": "FMa",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Minor forceps",
+      "abbreviation": "FMi",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Fornix",
+      "abbreviation": "FX",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "The ReCoDE lookup table names a Fornix label, but the active part list does not contain it; use a registered tract mask."
+    },
+    {
+      "mre134_label": "Uncinate fasciculus",
+      "abbreviation": "UN",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Inferior frontal-occipital fasciculus",
+      "abbreviation": "IFOF",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Inferior longitudinal fasciculus",
+      "abbreviation": "ILF",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Superior longitudinal fasciculus",
+      "abbreviation": "SLF",
+      "category": "white-matter-tract",
+      "unified_label": "Cerebral white matter",
+      "recode_parts": [
+        {
+          "part_id": 2,
+          "label": "Left-Cerebral-White-Matter"
+        },
+        {
+          "part_id": 41,
+          "label": "Right-Cerebral-White-Matter"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no tract-specific part; the listed cerebral-white-matter parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Superior frontal cortex",
+      "abbreviation": "SFC",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Rostral middle frontal cortex",
+      "abbreviation": "RMF",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Precentral cortex",
+      "abbreviation": "PRE",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Lateral occipital cortex",
+      "abbreviation": "LaO",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Lingual occipital cortex",
+      "abbreviation": "LiO",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Cuneus",
+      "abbreviation": "CN",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Superior parietal cortex",
+      "abbreviation": "SPC",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Postcentral cortex",
+      "abbreviation": "POST",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Precuneus",
+      "abbreviation": "PCN",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Superior temporal cortex",
+      "abbreviation": "STC",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Inferior temporal cortex",
+      "abbreviation": "ITC",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    },
+    {
+      "mre134_label": "Fusiform gyrus",
+      "abbreviation": "FSM",
+      "category": "cortical-gray-matter",
+      "unified_label": "Cerebral cortex",
+      "recode_parts": [
+        {
+          "part_id": 3,
+          "label": "Left-Cerebral-Cortex"
+        },
+        {
+          "part_id": 42,
+          "label": "Right-Cerebral-Cortex"
+        }
+      ],
+      "match_kind": "broader-recode",
+      "note": "ReCoDE has no parcel-specific cortical part; the listed cerebral-cortex parts are a broader fallback and require an atlas mask for spatial comparison."
+    }
+  ]
+}

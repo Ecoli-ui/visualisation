@@ -1,0 +1,59 @@
+{
+  "mre_case_id": "mre134-standard-space-atlas",
+  "other_case_id": "repo-generalized-maxwell-impact-demo",
+  "metadata_comparison_valid": true,
+  "normalized_distribution_comparison_valid": true,
+  "spatial_comparison_ready": false,
+  "raw_value_comparison_valid": false,
+  "field_pairs": [
+    {
+      "mre_field": "MRE134_Stiffness_kPa",
+      "other_field": "Maximum shear strain",
+      "mre_quantity": "shear-stiffness",
+      "other_quantity": "strain-like",
+      "mre_units": "kPa",
+      "other_units": "1",
+      "same_quantity": false,
+      "same_units": false,
+      "same_coordinate_system": false,
+      "same_association": false,
+      "same_temporal_semantics": false,
+      "raw_value_comparison_valid": false
+    },
+    {
+      "mre_field": "MRE134_DampingRatio",
+      "other_field": "Maximum shear strain",
+      "mre_quantity": "damping-ratio",
+      "other_quantity": "strain-like",
+      "mre_units": "1",
+      "other_units": "1",
+      "same_quantity": false,
+      "same_units": true,
+      "same_coordinate_system": false,
+      "same_association": false,
+      "same_temporal_semantics": false,
+      "raw_value_comparison_valid": false
+    }
+  ],
+  "issues": [
+    "MRE fields are material properties; comparison fields are strain/response values.",
+    "Cases do not share a declared coordinate system or transform.",
+    "MRE uses millimetres, while the comparison mesh length unit is unstated.",
+    "MRE properties are static; the comparison field is time varying.",
+    "MRE values are voxels; the comparison values are mesh cells.",
+    "The comparison simulation has no physical validation."
+  ],
+  "allowed_comparisons": [
+    "metadata and provenance",
+    "sample counts, missingness, and coverage",
+    "unit-free normalized distributions",
+    "spatial concentration without anatomical correspondence"
+  ],
+  "required_for_physical_comparison": [
+    "declare the comparison mesh length unit",
+    "provide an MNI-to-mesh transform and resampling policy",
+    "replace the reduced-order material-point response with a calibrated FE result",
+    "compare like quantities such as displacement-to-displacement",
+    "or declare a constitutive model that uses 50-Hz MRE properties as inputs"
+  ]
+}

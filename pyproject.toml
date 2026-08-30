@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brain-strain-visualisation"
+version = "0.1.0"
+description = "Interactive PyVista viewer and analysis tools for brain-strain data"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pyvista>=0.43",
+    "vtk>=9.2",
+]
+
+[project.optional-dependencies]
+lsdyna = ["lsdyna-mesh-reader>=0.1.6"]
+dev = ["ruff>=0.6"]
+package = ["pyinstaller>=6.15"]
+
+[project.scripts]
+brain-strain = "brain_strain.viewer.app:main"
+brain-strain-analysis = "brain_strain.analysis:main"
+brain-strain-visualise = "brain_strain.viewer.rendering:main"
+k-to-vtu = "brain_strain.adapters.lsdyna:main"
+mre134-adapter = "brain_strain.adapters.mre134:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

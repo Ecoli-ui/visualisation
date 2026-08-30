@@ -1,0 +1,170 @@
+{
+  "current_case_id": "mre134-standard-space-atlas",
+  "simulation_case_id": "repo-generalized-maxwell-impact-demo",
+  "comparison_scope": "visualisation-only",
+  "is_comparable": true,
+  "metadata_comparable": true,
+  "visualisation_comparable": true,
+  "physical_calculation_applicable": false,
+  "physical_comparison_valid": false,
+  "anatomy_compatibility": "compatible",
+  "label_mapping_declared": true,
+  "label_mapping_applicable": false,
+  "field_pairs": [
+    {
+      "current": {
+        "case_id": "mre134-standard-space-atlas",
+        "field_name": "MRE134_Stiffness_kPa",
+        "asset_id": "mre134-stiffness-kpa-runtime",
+        "source_record": "data_asset",
+        "quantity": "shear-stiffness",
+        "measure": "not-declared",
+        "units": "kPa",
+        "association": "voxel",
+        "display_association": "cell",
+        "coordinate_system": "MNI152-2mm",
+        "scalar": true,
+        "temporal": false,
+        "frame_count": null,
+        "is_simulated": false
+      },
+      "simulation": {
+        "case_id": "repo-generalized-maxwell-impact-demo",
+        "field_name": "Maximum shear strain",
+        "asset_id": "maxwell-strain-series",
+        "source_record": "strain_observation",
+        "quantity": "shear-strain",
+        "measure": "shear",
+        "units": "1",
+        "association": "cell",
+        "display_association": "cell",
+        "coordinate_system": "source-vtk-frame",
+        "scalar": true,
+        "temporal": true,
+        "frame_count": 10,
+        "is_simulated": true
+      },
+      "visualisation_comparable": true,
+      "normalized_visualisation_comparable": true,
+      "spatial_overlay_ready": false,
+      "same_quantity": false,
+      "same_units": false,
+      "same_association": false,
+      "same_display_association": true,
+      "same_coordinate_system": false,
+      "same_temporal_semantics": false,
+      "raw_value_semantically_compatible": false,
+      "physical_calculation_applicable": false,
+      "limitations": [
+        "different physical quantities",
+        "different or undeclared units",
+        "different scientific value associations",
+        "no shared coordinate system or declared transform",
+        "different temporal semantics",
+        "at least one field is simulated or synthetic"
+      ]
+    },
+    {
+      "current": {
+        "case_id": "mre134-standard-space-atlas",
+        "field_name": "MRE134_DampingRatio",
+        "asset_id": "mre134-damping-runtime",
+        "source_record": "data_asset",
+        "quantity": "damping-ratio",
+        "measure": "not-declared",
+        "units": "1",
+        "association": "voxel",
+        "display_association": "cell",
+        "coordinate_system": "MNI152-2mm",
+        "scalar": true,
+        "temporal": false,
+        "frame_count": null,
+        "is_simulated": false
+      },
+      "simulation": {
+        "case_id": "repo-generalized-maxwell-impact-demo",
+        "field_name": "Maximum shear strain",
+        "asset_id": "maxwell-strain-series",
+        "source_record": "strain_observation",
+        "quantity": "shear-strain",
+        "measure": "shear",
+        "units": "1",
+        "association": "cell",
+        "display_association": "cell",
+        "coordinate_system": "source-vtk-frame",
+        "scalar": true,
+        "temporal": true,
+        "frame_count": 10,
+        "is_simulated": true
+      },
+      "visualisation_comparable": true,
+      "normalized_visualisation_comparable": true,
+      "spatial_overlay_ready": false,
+      "same_quantity": false,
+      "same_units": true,
+      "same_association": false,
+      "same_display_association": true,
+      "same_coordinate_system": false,
+      "same_temporal_semantics": false,
+      "raw_value_semantically_compatible": false,
+      "physical_calculation_applicable": false,
+      "limitations": [
+        "different physical quantities",
+        "different scientific value associations",
+        "no shared coordinate system or declared transform",
+        "different temporal semantics",
+        "at least one field is simulated or synthetic"
+      ]
+    }
+  ],
+  "allowed_operations": [
+    "metadata and provenance comparison",
+    "side-by-side scalar rendering with independently labelled units",
+    "within-field normalized or percentile colour comparison",
+    "visual hotspot and spatial-concentration comparison"
+  ],
+  "prohibited_interpretations": [
+    "precise physical calculation or constitutive inference",
+    "clinical, injury-risk, or validation conclusions from visual similarity",
+    "direct comparison of raw values unless separately validated outside this viewer",
+    "voxel-to-mesh overlay without registration and resampling"
+  ],
+  "issues": [
+    "Comparison is limited to visualisation; precise physical calculation is outside the tool's scope.",
+    "The fields have no shared coordinate system or declared transform.",
+    "The fields represent different physical quantities.",
+    "Static and time-varying field semantics differ.",
+    "The simulation field is synthetic or simulated and is for display only.",
+    "A label mapping is declared, but its target is not identified as the simulation case."
+  ],
+  "details": {
+    "decision_meaning": "is_comparable reports viewer compatibility, not scientific equivalence or physical validation",
+    "current_case": {
+      "title": "MRE134 standard-space atlas of human brain viscoelastic properties",
+      "source": "derived",
+      "reference_issues": [],
+      "field_count": 2
+    },
+    "simulation_case": {
+      "title": "Reduced-order generalized Maxwell brain-impact response",
+      "source": "simulation",
+      "reference_issues": [],
+      "field_count": 1
+    },
+    "anatomy": {
+      "current": "brain",
+      "simulation": "brain/head"
+    },
+    "label_mapping": {
+      "declarations": [
+        {
+          "declared_by": "current",
+          "mapping_file": "examples/cases/mre134_recode_label_mapping.json",
+          "mapping_target": "ReCoDE active part_list_full.k",
+          "label_count": 34,
+          "applicable_to_other_case": false
+        }
+      ]
+    }
+  }
+}

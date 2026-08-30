@@ -1,0 +1,978 @@
+{
+  "case_id": "mre134-standard-space-atlas",
+  "title": "MRE134 standard-space atlas of human brain viscoelastic properties",
+  "source": "derived",
+  "schema_version": "1.0",
+  "description": "Cohort-average 50-Hz shear stiffness and damping ratio from 134 healthy young adults, nonlinearly normalized to the MNI152 2-mm template.",
+  "study_id": "Hiscox-et-al-2020-HBM-MRE134",
+  "research_question": "What are the standard-space distributions of shear stiffness and damping ratio in the healthy young adult brain?",
+  "contributors": [],
+  "units": {
+    "name": "MNI millimetres, seconds, and kPa adapter representation",
+    "length": "mm",
+    "time": "s",
+    "pressure": "kPa",
+    "strain": "1",
+    "extensions": {
+      "damping_ratio": "1"
+    }
+  },
+  "coordinate_systems": [
+    {
+      "name": "MNI152-2mm",
+      "convention": "NIfTI voxel centres mapped to MNI/ICBM-152 world coordinates",
+      "origin": [
+        90.0,
+        -126.0,
+        -72.0
+      ],
+      "axes": {
+        "voxel_i": "world x decreases by 2 mm",
+        "voxel_j": "world y increases by 2 mm",
+        "voxel_k": "world z increases by 2 mm"
+      },
+      "reference": "MNI152 nonlinear T1-weighted 2-mm atlas",
+      "transform_to_reference": [
+        [
+          -2.0,
+          0.0,
+          0.0,
+          90.0
+        ],
+        [
+          0.0,
+          2.0,
+          0.0,
+          -126.0
+        ],
+        [
+          0.0,
+          0.0,
+          2.0,
+          -72.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "handedness": "right-handed MNI world; voxel i axis reversed",
+      "moving": false,
+      "extensions": {}
+    }
+  ],
+  "anatomy": {
+    "anatomy": "brain",
+    "imaging_modality": "magnetic resonance elastography and T1-weighted MRI",
+    "imaging_protocol": {
+      "actuation_frequency_hz": 50.0,
+      "MRE_resolution_mm": {
+        "Study D": 2.0,
+        "other_studies": 1.6
+      },
+      "output_resolution_mm": 2.0
+    },
+    "image_asset_ids": [
+      "mre134-stiffness-archive",
+      "mre134-damping-archive"
+    ],
+    "segmentation_method": "MNI152 whole-brain and study ROI masks",
+    "segmentation_labels": {
+      "vocabulary": "Hiscox et al. (2020) MRE134 publication ROIs",
+      "label_volume_in_release": false,
+      "mapping_file": "examples/cases/mre134_recode_label_mapping.json",
+      "mapping_target": "ReCoDE active part_list_full.k",
+      "labels": {
+        "Whole brain": {
+          "abbreviation": "Global",
+          "category": "global",
+          "unified_label": "Whole brain (ventricles excluded)",
+          "recode_part_ids": [],
+          "match_kind": "no-direct-match"
+        },
+        "White matter": {
+          "abbreviation": "WM",
+          "category": "global",
+          "unified_label": "White matter",
+          "recode_part_ids": [
+            2,
+            41,
+            7,
+            46,
+            77,
+            85,
+            251,
+            252,
+            253,
+            254,
+            255
+          ],
+          "match_kind": "aggregate"
+        },
+        "Subcortical gray matter": {
+          "abbreviation": "SGM",
+          "category": "global",
+          "unified_label": "Subcortical grey matter",
+          "recode_part_ids": [
+            18,
+            54,
+            11,
+            50,
+            17,
+            53,
+            13,
+            52,
+            12,
+            51,
+            10,
+            49
+          ],
+          "match_kind": "aggregate"
+        },
+        "Cortical gray matter": {
+          "abbreviation": "CGM",
+          "category": "global",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Amygdala": {
+          "abbreviation": "AM",
+          "category": "subcortical-gray-matter",
+          "unified_label": "Amygdala",
+          "recode_part_ids": [
+            18,
+            54
+          ],
+          "match_kind": "exact-bilateral"
+        },
+        "Caudate": {
+          "abbreviation": "CA",
+          "category": "subcortical-gray-matter",
+          "unified_label": "Caudate",
+          "recode_part_ids": [
+            11,
+            50
+          ],
+          "match_kind": "exact-bilateral"
+        },
+        "Hippocampus": {
+          "abbreviation": "HC",
+          "category": "subcortical-gray-matter",
+          "unified_label": "Hippocampus",
+          "recode_part_ids": [
+            17,
+            53
+          ],
+          "match_kind": "exact-bilateral"
+        },
+        "Pallidum": {
+          "abbreviation": "PA",
+          "category": "subcortical-gray-matter",
+          "unified_label": "Pallidum",
+          "recode_part_ids": [
+            13,
+            52
+          ],
+          "match_kind": "exact-bilateral"
+        },
+        "Putamen": {
+          "abbreviation": "PU",
+          "category": "subcortical-gray-matter",
+          "unified_label": "Putamen",
+          "recode_part_ids": [
+            12,
+            51
+          ],
+          "match_kind": "exact-bilateral"
+        },
+        "Thalamus": {
+          "abbreviation": "TH",
+          "category": "subcortical-gray-matter",
+          "unified_label": "Thalamus",
+          "recode_part_ids": [
+            10,
+            49
+          ],
+          "match_kind": "exact-bilateral"
+        },
+        "Corticospinal tract": {
+          "abbreviation": "CST",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Anterior thalamic radiation": {
+          "abbreviation": "ATR",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Posterior thalamic radiation": {
+          "abbreviation": "PTR",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Corona radiata": {
+          "abbreviation": "CRa",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Corpus callosum": {
+          "abbreviation": "CC",
+          "category": "white-matter-tract",
+          "unified_label": "Corpus callosum",
+          "recode_part_ids": [
+            251,
+            252,
+            253,
+            254,
+            255
+          ],
+          "match_kind": "partitioned"
+        },
+        "Major forceps": {
+          "abbreviation": "FMa",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Minor forceps": {
+          "abbreviation": "FMi",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Fornix": {
+          "abbreviation": "FX",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Uncinate fasciculus": {
+          "abbreviation": "UN",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Inferior frontal-occipital fasciculus": {
+          "abbreviation": "IFOF",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Inferior longitudinal fasciculus": {
+          "abbreviation": "ILF",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Superior longitudinal fasciculus": {
+          "abbreviation": "SLF",
+          "category": "white-matter-tract",
+          "unified_label": "Cerebral white matter",
+          "recode_part_ids": [
+            2,
+            41
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Superior frontal cortex": {
+          "abbreviation": "SFC",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Rostral middle frontal cortex": {
+          "abbreviation": "RMF",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Precentral cortex": {
+          "abbreviation": "PRE",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Lateral occipital cortex": {
+          "abbreviation": "LaO",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Lingual occipital cortex": {
+          "abbreviation": "LiO",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Cuneus": {
+          "abbreviation": "CN",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Superior parietal cortex": {
+          "abbreviation": "SPC",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Postcentral cortex": {
+          "abbreviation": "POST",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Precuneus": {
+          "abbreviation": "PCN",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Superior temporal cortex": {
+          "abbreviation": "STC",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Inferior temporal cortex": {
+          "abbreviation": "ITC",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        },
+        "Fusiform gyrus": {
+          "abbreviation": "FSM",
+          "category": "cortical-gray-matter",
+          "unified_label": "Cerebral cortex",
+          "recode_part_ids": [
+            3,
+            42
+          ],
+          "match_kind": "broader-recode"
+        }
+      }
+    },
+    "mesh_asset_id": "mre134-adapted-vti",
+    "mesh_stage": "voxel atlas",
+    "mesh_type": "regular image grid represented as PyVista ImageData cells",
+    "element_types": [
+      "voxel"
+    ],
+    "node_count": 931040,
+    "element_count": 902629,
+    "regions": {},
+    "sets": {},
+    "mesh_quality": {},
+    "coordinate_system": "MNI152-2mm",
+    "registration": {
+      "software": "ANTs",
+      "method": "rigid/affine MRE-to-T1 plus nonlinear SyN T1-to-MNI152",
+      "interpolation": "linear"
+    },
+    "extensions": {}
+  },
+  "loading": {
+    "event_type": "harmonic vibration",
+    "description": "Pneumatically transmitted head vibration for brain MRE",
+    "loading_mode": "steady-state harmonic actuation",
+    "impactor": {},
+    "boundary_conditions": {},
+    "initial_conditions": {},
+    "linear_kinematics_asset_ids": [],
+    "angular_kinematics_asset_ids": [],
+    "force_asset_ids": [],
+    "displacement_asset_ids": [],
+    "peak_values": {},
+    "filtering": {},
+    "extensions": {
+      "actuation_frequency_hz": 50.0
+    }
+  },
+  "acquisition": {
+    "method": "3D multislab multishot spiral magnetic resonance elastography",
+    "protocol": "three motion-encoding axes, opposite polarities, four phase offsets",
+    "operators": [],
+    "instruments": [
+      {
+        "instrument_id": "resoundant-actuator",
+        "kind": "pneumatic MRE actuator",
+        "manufacturer": "Resoundant",
+        "calibration": {},
+        "accuracy": {},
+        "channels": {},
+        "extensions": {
+          "actuation_frequency_hz": 50.0
+        }
+      }
+    ],
+    "calibration": {},
+    "filtering": {},
+    "environmental_conditions": {},
+    "raw_asset_ids": [],
+    "extensions": {
+      "sites": [
+        "University of Edinburgh",
+        "UIUC",
+        "Carle Foundation Hospital"
+      ],
+      "scanner_models": [
+        "Siemens Verio",
+        "Siemens Trio"
+      ],
+      "available_processed_property_asset_ids": [
+        "mre134-individual-stiffness",
+        "mre134-individual-damping"
+      ]
+    }
+  },
+  "strain_observations": [],
+  "derived_results": [
+    {
+      "result_id": "mre134-global-mean-stiffness",
+      "name": "Mean nonzero atlas shear stiffness",
+      "value": 2.6126253604888916,
+      "units": "kPa",
+      "method": "mean over joint finite nonzero atlas support",
+      "source_observation_ids": [],
+      "asset_id": "mre134-stiffness-kpa-runtime",
+      "coordinate_system": "MNI152-2mm",
+      "uncertainty": {},
+      "extensions": {
+        "support_voxels": 212217
+      }
+    },
+    {
+      "result_id": "mre134-global-mean-damping",
+      "name": "Mean nonzero atlas damping ratio",
+      "value": 0.20846997201442719,
+      "units": "1",
+      "method": "mean over joint finite nonzero atlas support",
+      "source_observation_ids": [],
+      "asset_id": "mre134-damping-runtime",
+      "coordinate_system": "MNI152-2mm",
+      "uncertainty": {},
+      "extensions": {
+        "support_voxels": 212217
+      }
+    }
+  ],
+  "outcomes": [],
+  "assets": [
+    {
+      "asset_id": "mre134-individual-stiffness",
+      "role": "individual normalized shear-stiffness maps",
+      "location": "data/external/MRE134-master/individual_stiffness_files",
+      "format": "directory-of-nifti-1",
+      "field_names": [
+        "raw_shear_stiffness"
+      ],
+      "association": "voxel",
+      "shape": [
+        134,
+        91,
+        109,
+        91
+      ],
+      "dtype": "float32",
+      "units": "Pa-equivalent stored scale",
+      "coordinate_system": "MNI152-2mm",
+      "description": "134 warped individual maps; values require division by 1000 for kPa.",
+      "extensions": {
+        "quantity_kind": "shear-stiffness",
+        "file_count": 134
+      }
+    },
+    {
+      "asset_id": "mre134-individual-damping",
+      "role": "individual normalized damping-ratio maps",
+      "location": "data/external/MRE134-master/individual_damping ratio_files",
+      "format": "directory-of-nifti-1",
+      "field_names": [
+        "damping_ratio"
+      ],
+      "association": "voxel",
+      "shape": [
+        134,
+        91,
+        109,
+        91
+      ],
+      "dtype": "float32",
+      "units": "1",
+      "coordinate_system": "MNI152-2mm",
+      "description": "134 warped individual dimensionless damping-ratio maps.",
+      "extensions": {
+        "quantity_kind": "damping-ratio",
+        "file_count": 134
+      }
+    },
+    {
+      "asset_id": "mre134-stiffness-archive",
+      "role": "published group-average shear-stiffness NIfTI archive",
+      "location": "data/external/MRE134-master/MRE134_Stiffness3D.nii.zip",
+      "format": "zip/nifti-1",
+      "media_type": "application/zip",
+      "byte_size": 773191,
+      "field_names": [
+        "raw_group_mean_stiffness"
+      ],
+      "association": "voxel",
+      "shape": [
+        91,
+        109,
+        91
+      ],
+      "dtype": "float32",
+      "units": "Pa-equivalent stored scale",
+      "coordinate_system": "MNI152-2mm",
+      "generated_by": "create-mre134-group-atlas",
+      "extensions": {
+        "quantity_kind": "shear-stiffness",
+        "raw_to_kpa": 0.001
+      }
+    },
+    {
+      "asset_id": "mre134-damping-archive",
+      "role": "published group-average damping-ratio NIfTI archive",
+      "location": "data/external/MRE134-master/MRE134_Damping3D.nii.zip",
+      "format": "zip/nifti-1",
+      "media_type": "application/zip",
+      "byte_size": 776657,
+      "field_names": [
+        "group_mean_damping_ratio"
+      ],
+      "association": "voxel",
+      "shape": [
+        91,
+        109,
+        91
+      ],
+      "dtype": "float32",
+      "units": "1",
+      "coordinate_system": "MNI152-2mm",
+      "generated_by": "create-mre134-group-atlas",
+      "extensions": {
+        "quantity_kind": "damping-ratio"
+      }
+    },
+    {
+      "asset_id": "mre134-adapted-vti",
+      "role": "adapter-created cell-valued MNI atlas grid",
+      "location": "outputs/mre134/adapter/MRE134_atlas.vti",
+      "format": "vti",
+      "media_type": "model/vnd.vtk",
+      "field_names": [
+        "MRE134_Stiffness_kPa",
+        "MRE134_DampingRatio",
+        "MRE134_ValidMask",
+        "MRE134_ContributorCount"
+      ],
+      "association": "voxel",
+      "shape": [
+        91,
+        109,
+        91
+      ],
+      "coordinate_system": "MNI152-2mm",
+      "description": "Compressed VTI written by the adapter; NIfTI voxel values are stored as PyVista cell arrays. Contributor count is present when the CLI is run with --contributors.",
+      "generated_by": "load-mre134-atlas",
+      "extensions": {
+        "pyvista_dataset_type": "ImageData"
+      }
+    },
+    {
+      "asset_id": "mre134-stiffness-kpa-runtime",
+      "role": "adapter-converted group-average shear stiffness",
+      "location": "generated:brain_strain.adapters.mre134/MRE134_Stiffness_kPa",
+      "format": "pyvista-cell-array",
+      "field_names": [
+        "MRE134_Stiffness_kPa"
+      ],
+      "association": "voxel",
+      "shape": [
+        91,
+        109,
+        91
+      ],
+      "dtype": "float32",
+      "units": "kPa",
+      "coordinate_system": "MNI152-2mm",
+      "description": "Cell values exposed by load_mre134 after raw / 1000 conversion.",
+      "generated_by": "load-mre134-atlas",
+      "extensions": {
+        "quantity_kind": "shear-stiffness",
+        "comparison_role": "field",
+        "pyvista_association": "cell"
+      }
+    },
+    {
+      "asset_id": "mre134-damping-runtime",
+      "role": "adapter-loaded group-average damping ratio",
+      "location": "generated:brain_strain.adapters.mre134/MRE134_DampingRatio",
+      "format": "pyvista-cell-array",
+      "field_names": [
+        "MRE134_DampingRatio"
+      ],
+      "association": "voxel",
+      "shape": [
+        91,
+        109,
+        91
+      ],
+      "dtype": "float32",
+      "units": "1",
+      "coordinate_system": "MNI152-2mm",
+      "generated_by": "load-mre134-atlas",
+      "extensions": {
+        "quantity_kind": "damping-ratio",
+        "comparison_role": "field",
+        "pyvista_association": "cell"
+      }
+    },
+    {
+      "asset_id": "mre134-valid-mask-runtime",
+      "role": "joint nonzero finite atlas mask",
+      "location": "generated:brain_strain.adapters.mre134/MRE134_ValidMask",
+      "format": "pyvista-cell-array",
+      "field_names": [
+        "MRE134_ValidMask"
+      ],
+      "association": "voxel",
+      "shape": [
+        91,
+        109,
+        91
+      ],
+      "dtype": "uint8",
+      "units": "1",
+      "coordinate_system": "MNI152-2mm",
+      "generated_by": "load-mre134-atlas",
+      "extensions": {}
+    },
+    {
+      "asset_id": "mre134-contributor-count-runtime",
+      "role": "positive individual-map contributor count per atlas voxel",
+      "location": "generated:brain_strain.adapters.mre134/MRE134_ContributorCount",
+      "format": "pyvista-cell-array",
+      "field_names": [
+        "MRE134_ContributorCount"
+      ],
+      "association": "voxel",
+      "shape": [
+        91,
+        109,
+        91
+      ],
+      "dtype": "uint16",
+      "units": "participants",
+      "coordinate_system": "MNI152-2mm",
+      "description": "Generated when load_mre134(include_contributor_count=True).",
+      "generated_by": "count-mre134-contributors",
+      "extensions": {}
+    },
+    {
+      "asset_id": "mre134-demographics",
+      "role": "deidentified cohort demographics",
+      "location": "data/external/MRE134-master/MRE134_Demographics.xlsx",
+      "format": "xlsx",
+      "media_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "byte_size": 12598,
+      "field_names": [
+        "SUBJECT ID",
+        "AGE",
+        "SEX",
+        "ORIG STUDY"
+      ],
+      "association": "specimen",
+      "shape": [
+        134,
+        4
+      ],
+      "extensions": {}
+    },
+    {
+      "asset_id": "mre134-recode-label-mapping",
+      "role": "MRE134 publication ROI to ReCoDE part-label crosswalk",
+      "location": "examples/cases/mre134_recode_label_mapping.json",
+      "format": "json",
+      "media_type": "application/json",
+      "field_names": [
+        "mre134_label",
+        "unified_label",
+        "recode_parts"
+      ],
+      "association": "region",
+      "shape": [
+        34
+      ],
+      "description": "Semantic mapping with explicit exact, aggregate, partitioned, broader-target, and unmatched classifications.",
+      "generated_by": "map-mre134-recode-labels",
+      "extensions": {}
+    },
+    {
+      "asset_id": "mre134-publication",
+      "role": "study publication",
+      "location": "data/external/MRE134-master/Hiscox_et_al_2020_HBM.pdf",
+      "format": "pdf",
+      "media_type": "application/pdf",
+      "byte_size": 5211283,
+      "field_names": [],
+      "extensions": {}
+    }
+  ],
+  "processing": [
+    {
+      "step_id": "create-mre134-group-atlas",
+      "name": "Normalize individual maps and form group atlases",
+      "software": "ANTs and study MRE processing pipeline",
+      "parameters": {
+        "group_operation": "voxelwise mean of positive/nonzero contributors",
+        "target": "MNI152 2-mm",
+        "participants": 134
+      },
+      "input_asset_ids": [
+        "mre134-individual-stiffness",
+        "mre134-individual-damping"
+      ],
+      "output_asset_ids": [
+        "mre134-stiffness-archive",
+        "mre134-damping-archive"
+      ],
+      "extensions": {}
+    },
+    {
+      "step_id": "load-mre134-atlas",
+      "name": "Adapt NIfTI atlases to a cell-valued PyVista MNI grid",
+      "software": "brain_strain.adapters.mre134",
+      "code_reference": "brain_strain.adapters.mre134.load_mre134",
+      "parameters": {
+        "stiffness_scale": 0.001,
+        "voxel_representation": "PyVista ImageData cells",
+        "cell_centres_match_nifti_voxel_centres": true
+      },
+      "input_asset_ids": [
+        "mre134-stiffness-archive",
+        "mre134-damping-archive"
+      ],
+      "output_asset_ids": [
+        "mre134-adapted-vti",
+        "mre134-stiffness-kpa-runtime",
+        "mre134-damping-runtime",
+        "mre134-valid-mask-runtime"
+      ],
+      "extensions": {}
+    },
+    {
+      "step_id": "count-mre134-contributors",
+      "name": "Count positive individual stiffness contributors per voxel",
+      "software": "brain_strain.adapters.mre134",
+      "code_reference": "brain_strain.adapters.mre134._contributor_count",
+      "parameters": {},
+      "input_asset_ids": [
+        "mre134-individual-stiffness"
+      ],
+      "output_asset_ids": [
+        "mre134-contributor-count-runtime"
+      ],
+      "extensions": {}
+    },
+    {
+      "step_id": "map-mre134-recode-labels",
+      "name": "Map MRE134 publication ROI names to ReCoDE part labels",
+      "software": "brain_strain.adapters.mre134_labels",
+      "code_reference": "brain_strain.adapters.mre134_labels.mapping_document",
+      "parameters": {
+        "target_vocabulary": "ReCoDE active part_list_full.k",
+        "preserve_mapping_granularity": true,
+        "spatial_registration_implied": false
+      },
+      "input_asset_ids": [
+        "mre134-publication"
+      ],
+      "output_asset_ids": [
+        "mre134-recode-label-mapping"
+      ],
+      "extensions": {}
+    }
+  ],
+  "quality": {
+    "status": "published cohort atlas with adapter validation",
+    "mesh_checks": {},
+    "signal_checks": {
+      "joint_finite_nonzero_support_voxels": 212217,
+      "converted_stiffness_mean_kpa": 2.6126253604888916,
+      "damping_mean": 0.20846997201442719
+    },
+    "convergence": {},
+    "validation": {
+      "reference_global_stiffness_kpa": 2.62,
+      "reference_global_damping_ratio": 0.208,
+      "case_references_resolve": true
+    },
+    "uncertainty": {},
+    "sensitivity": {},
+    "missing_data": {
+      "background": "NaN or zero outside the released atlas support",
+      "voxel_contributor_count": "varies from 1 to 134; generate the runtime count before voxelwise use"
+    },
+    "exclusions": [],
+    "limitations": [
+      "MRE properties are dynamic 50-Hz quantities, not strain response fields.",
+      "Original studies differ in site, scanner, coil, resolution, age, and sex composition.",
+      "Stiffness source values require raw / 1000 conversion to kPa.",
+      "Atlas boundary voxels may have substantially fewer than 134 contributors."
+    ],
+    "reviewed_by": [],
+    "extensions": {}
+  },
+  "governance": {
+    "privacy_classification": "deidentified cohort data",
+    "deidentification": "public subject IDs 001-134; age, sex, and study only",
+    "access_conditions": "repository access conditions",
+    "licence": "See source repository and publication",
+    "extensions": {}
+  },
+  "publications": [
+    "Hiscox et al. (2020), Standard-Space Atlas of the Viscoelastic Properties of the Human Brain, Human Brain Mapping 41(18):5282-5300, DOI 10.1002/hbm.25192"
+  ],
+  "citations": [
+    "data/external/MRE134-master/Hiscox_et_al_2020_HBM.pdf",
+    "data/external/MRE134-master/README.md",
+    "data/external/ReCoDE-brain-mesh-creation-main/src/dependencies/simulation/part_list_full.k"
+  ],
+  "keywords": [
+    "brain",
+    "magnetic resonance elastography",
+    "shear stiffness",
+    "damping ratio",
+    "MNI152",
+    "material properties"
+  ],
+  "related_case_ids": [
+    "repo-generalized-maxwell-impact-demo"
+  ],
+  "extensions": {
+    "cohort": {
+      "participants": 134,
+      "sex_counts": {
+        "M": 56,
+        "F": 78
+      },
+      "age_years": {
+        "mean": 23.365671641791046,
+        "sd": 3.9916097055882305,
+        "range": [
+          18.0,
+          35.0
+        ]
+      },
+      "original_study_counts": {
+        "Study A": 12,
+        "Study B": 19,
+        "Study C": 6,
+        "Study D": 31,
+        "Study E": 66
+      }
+    },
+    "adapter": {
+      "module": "brain_strain.adapters.mre134",
+      "primary_field": "MRE134_Stiffness_kPa",
+      "alternate_field": "MRE134_DampingRatio",
+      "label_mapping": "examples/cases/mre134_recode_label_mapping.json"
+    }
+  }
+}

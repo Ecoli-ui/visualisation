@@ -1,0 +1,363 @@
+{
+  "case_id": "repo-generalized-maxwell-impact-demo",
+  "title": "Reduced-order generalized Maxwell brain-impact response",
+  "source": "simulation",
+  "schema_version": "1.0",
+  "description": "A generalized Maxwell material-point response driven by a rotational inertial stress approximation. It replaces the former analytic hotspot field but is not a finite-element solution.",
+  "research_question": "Can the viewer exercise time, colour, selection, peak, and hotspot controls with an explicit viscoelastic constitutive response?",
+  "contributors": [],
+  "units": {
+    "time": "s",
+    "strain": "1",
+    "extensions": {
+      "mesh_length_unit": "not stated in the source VTK file",
+      "modulus_unit": "normalized; all generalized Maxwell moduli use one consistent arbitrary stress unit"
+    }
+  },
+  "coordinate_systems": [
+    {
+      "name": "source-vtk-frame",
+      "convention": "unchanged coordinates from the source VTK mesh; local +z is the default rotation axis",
+      "moving": false,
+      "extensions": {}
+    }
+  ],
+  "anatomy": {
+    "anatomy": "brain/head",
+    "mesh_asset_id": "coarse-region-mesh",
+    "mesh_stage": "coarse reference mesh",
+    "mesh_type": "VTK unstructured grid",
+    "node_count": 18617,
+    "element_count": 17030,
+    "regions": {
+      "cell_arrays": [
+        "PartID",
+        "RegionID"
+      ],
+      "tissue_groups_used_by_ui": [
+        "Skin",
+        "Skull",
+        "CSF",
+        "Grey matter",
+        "White matter",
+        "Ventricles",
+        "Other"
+      ]
+    },
+    "coordinate_system": "source-vtk-frame",
+    "extensions": {}
+  },
+  "loading": {
+    "event_type": "mild head impact",
+    "description": "A signed unit pulse with loading and bounce-back lobes, scaled by cell distance from the local +z rotation axis.",
+    "loading_mode": "prescribed reduced-order shear stress",
+    "direction": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "coordinate_system": "source-vtk-frame",
+    "duration": 0.162,
+    "time_unit": "s",
+    "boundary_conditions": {
+      "spatial_weight": "radial distance from the rotation axis, normalized by the maximum cell-centre radius",
+      "equilibrium_enforced": false
+    },
+    "initial_conditions": {
+      "strain": 0.0,
+      "maxwell_branch_stress": 0.0
+    },
+    "peak_values": {
+      "reference_peak_spatial_mean_mss": 0.017,
+      "reference_condition": "neck rotation"
+    },
+    "extensions": {
+      "reference_neck_extension_mss": 0.011,
+      "reference_neck_rotation_mss": 0.017,
+      "reference_frame_interval_seconds": 0.018
+    }
+  },
+  "simulation": {
+    "solver": "simulation.generalized_maxwell_strain_response",
+    "model_asset_ids": [
+      "coarse-region-mesh"
+    ],
+    "materials": [
+      {
+        "material_id": "illustrative-generalized-maxwell",
+        "name": "Normalized generalized Maxwell solid",
+        "region_ids": [],
+        "constitutive_model": "linear generalized Maxwell (Maxwell-Wiechert)",
+        "parameters": {
+          "branch_count_N": 3,
+          "modulus_kind": "G0",
+          "estimated_instantaneous_modulus": 2.0,
+          "modulus_scale": 1.0,
+          "modulus_scale_range": [
+            0.5,
+            2.0
+          ],
+          "instantaneous_modulus_G0": 2.0,
+          "equilibrium_ratio_r_infinity": 0.5,
+          "equilibrium_ratio_range": [
+            0.001,
+            0.999
+          ],
+          "equilibrium_modulus": 1.0,
+          "branch_fractions_gi": [
+            0.24600784229689876,
+            0.15558902078434173,
+            0.0984031369187595
+          ],
+          "branch_moduli": [
+            0.4920156845937975,
+            0.31117804156868345,
+            0.196806273837519
+          ],
+          "relaxation_times_seconds": [
+            0.006,
+            0.02683281572999748,
+            0.12
+          ],
+          "relaxation_time_scale": "logarithmic",
+          "normalization_constraint": "r_infinity + sum_i(g_i) = 1",
+          "relaxation_modulus": "G(t) = G0 * (r_infinity + sum_i g_i exp(-t/tau_i))"
+        },
+        "viscoelasticity": {
+          "branch_count": 3,
+          "time_integration": "exact exponential branch-stress update for piecewise-linear strain"
+        },
+        "source": "illustrative defaults; not fitted by Gomez et al. (2021)",
+        "extensions": {}
+      }
+    ],
+    "constraints": {
+      "finite_element_equilibrium": false,
+      "contact": false,
+      "anatomical_boundary_conditions": false
+    },
+    "controls": {
+      "frame_count": 10,
+      "frame_interval_seconds": 0.018,
+      "termination_time_seconds": 0.162
+    },
+    "output_requests": {
+      "cell_scalar": "maximum shear strain"
+    },
+    "timestep": 0.018,
+    "termination_time": 0.162,
+    "status": "reduced-order demonstration; constitutive update implemented, spatial mechanics not solved",
+    "warnings": [
+      "The referenced paper reports kinematics and does not identify generalized Maxwell coefficients.",
+      "The default normalized moduli and relaxation times are illustrative assumptions.",
+      "The spatial stress field is a rotational-inertia approximation, not an equilibrium solution."
+    ],
+    "extensions": {}
+  },
+  "strain_observations": [
+    {
+      "observation_id": "generalized-maxwell-mss",
+      "name": "Maximum shear strain",
+      "measure": "shear",
+      "asset_id": "maxwell-strain-series",
+      "association": "cell",
+      "units": "1",
+      "components": [],
+      "tensor_order": 0,
+      "coordinate_system": "source-vtk-frame",
+      "reference_configuration": "source mesh",
+      "time_asset_id": "maxwell-time",
+      "time_start": 0.0,
+      "time_end": 0.162,
+      "frame_count": 10,
+      "calculation_method": "inverse scalar generalized-Maxwell constitutive update under prescribed rotational shear stress; absolute response scaled to the Gomez et al. neck-rotation atlas MSS reference",
+      "software": "brain_strain.simulation.simulate_generalized_maxwell_strain",
+      "filtering": {},
+      "is_simulated": true,
+      "extensions": {
+        "scientific_interpretation": "reduced-order constitutive demonstration; not measured strain and not a finite-element result"
+      }
+    }
+  ],
+  "derived_results": [
+    {
+      "result_id": "global-peak",
+      "name": "Global peak value and location",
+      "method": "analysis.find_global_peak",
+      "source_observation_ids": [
+        "generalized-maxwell-mss"
+      ],
+      "uncertainty": {},
+      "extensions": {
+        "computed_on_demand": true
+      }
+    },
+    {
+      "result_id": "hotspots",
+      "name": "Thresholded cell hotspots and temporal traces",
+      "method": "analysis.detect_hotspots and analysis.trace_hotspots",
+      "source_observation_ids": [
+        "generalized-maxwell-mss"
+      ],
+      "uncertainty": {},
+      "extensions": {
+        "threshold_selected_in_ui": true
+      }
+    }
+  ],
+  "outcomes": [],
+  "assets": [
+    {
+      "asset_id": "coarse-region-mesh",
+      "role": "anatomical mesh",
+      "location": "data/external/brain-meshing/coarse_7-23-2020/coarse_brain_with_regions.vtk",
+      "format": "legacy-vtk",
+      "media_type": "model/vnd.vtk",
+      "field_names": [
+        "PartID",
+        "RegionID"
+      ],
+      "coordinate_system": "source-vtk-frame",
+      "description": "Coarse brain mesh used by the mesh-slices example and as the viewer's default model.",
+      "extensions": {}
+    },
+    {
+      "asset_id": "maxwell-time",
+      "role": "time axis",
+      "location": "generated:brain_strain.simulation.simulate_generalized_maxwell_strain/times",
+      "format": "numpy-array",
+      "field_names": [
+        "time"
+      ],
+      "shape": [
+        10
+      ],
+      "dtype": "float64",
+      "units": "s",
+      "description": "Generated at runtime with the referenced 18 ms interval.",
+      "generated_by": "simulate-generalized-maxwell",
+      "extensions": {}
+    },
+    {
+      "asset_id": "maxwell-strain-series",
+      "role": "maximum shear strain result field",
+      "location": "generated:brain_strain.simulation.simulate_generalized_maxwell_strain/scalar_series",
+      "format": "numpy-array",
+      "field_names": [
+        "Maximum shear strain"
+      ],
+      "association": "cell",
+      "shape": [
+        10,
+        17030
+      ],
+      "dtype": "float64",
+      "units": "1",
+      "coordinate_system": "source-vtk-frame",
+      "description": "Runtime generalized-Maxwell material-point response.",
+      "generated_by": "simulate-generalized-maxwell",
+      "extensions": {}
+    }
+  ],
+  "processing": [
+    {
+      "step_id": "simulate-generalized-maxwell",
+      "name": "Integrate generalized Maxwell material response",
+      "software": "simulation.py",
+      "code_reference": "brain_strain.simulation.simulate_generalized_maxwell_strain",
+      "parameters": {
+        "frame_count": 10,
+        "duration_seconds": 0.162,
+        "impact_mode": "neck-rotation",
+        "rotation_axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "target_peak_spatial_mean_mss": 0.017,
+        "load_calibration": "target MSS calibrates the fixed reference load; the adjustable model response is not rescaled",
+        "branch_count_N": 3,
+        "estimated_instantaneous_modulus": 2.0,
+        "modulus_scale": 1.0,
+        "equilibrium_ratio_r_infinity": 0.5,
+        "branch_fractions_gi": [
+          0.24600784229689876,
+          0.15558902078434173,
+          0.0984031369187595
+        ],
+        "equilibrium_modulus": 1.0,
+        "branch_moduli": [
+          0.4920156845937975,
+          0.31117804156868345,
+          0.196806273837519
+        ],
+        "relaxation_times_seconds": [
+          0.006,
+          0.02683281572999748,
+          0.12
+        ]
+      },
+      "input_asset_ids": [
+        "coarse-region-mesh"
+      ],
+      "output_asset_ids": [
+        "maxwell-time",
+        "maxwell-strain-series"
+      ],
+      "extensions": {}
+    }
+  ],
+  "quality": {
+    "status": "reduced-order simulation; not physically validated",
+    "mesh_checks": {},
+    "signal_checks": {
+      "finite_values_required": true,
+      "ordered_time_required": true,
+      "constitutive_branch_update_tested": true
+    },
+    "convergence": {},
+    "validation": {
+      "constitutive_equations_implemented": true,
+      "physical_validation": false,
+      "kinematic_scale_reference_only": true
+    },
+    "uncertainty": {},
+    "sensitivity": {},
+    "missing_data": {},
+    "exclusions": [],
+    "limitations": [
+      "Gomez et al. supplies kinematic observations, not generalized Maxwell coefficients.",
+      "No finite-element momentum balance, contact, or anatomical boundary conditions are solved.",
+      "The normalized default material parameters require calibration before biomechanical use.",
+      "The result must not be used for clinical or injury-threshold conclusions."
+    ],
+    "reviewed_by": [],
+    "extensions": {}
+  },
+  "governance": {
+    "privacy_classification": "non-personal simulated data",
+    "access_conditions": "repository access conditions",
+    "extensions": {}
+  },
+  "publications": [
+    "Gomez AD, Bayly PV, Butman JA, Pham DL, Prince JL, Knutsen AK. Group characterization of impact-induced, in vivo human brain kinematics. J R Soc Interface. 2021;18(179):20210251. doi:10.1098/rsif.2021.0251."
+  ],
+  "citations": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8220272/",
+    "https://doi.org/10.1098/rsif.2021.0251"
+  ],
+  "keywords": [
+    "brain",
+    "maximum shear strain",
+    "generalized Maxwell model",
+    "viscoelasticity",
+    "neck rotation",
+    "hotspot"
+  ],
+  "related_case_ids": [
+    "dryad-impact-kinematics-atlas"
+  ],
+  "extensions": {
+    "repository_scope": "reduced-order constitutive visualization"
+  }
+}
