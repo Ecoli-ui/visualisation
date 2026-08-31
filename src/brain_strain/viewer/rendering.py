@@ -414,9 +414,9 @@ class MeshVisualisation:
         """Apply a picker output through the configured selection handler."""
         self._handle_picked_cells(picked)
 
-    def replace_main_actor(self) -> None:
-        """Recreate the primary actor using the active scalar presentation."""
-        self._replace_main_actor()
+    def replace_main_actor(self, **mesh_options: Any) -> Any:
+        """Recreate the primary actor, optionally overriding its presentation."""
+        return self._replace_main_actor(mesh_options or None)
 
     def replace_slice_actors(self, actors: Iterable[Any]) -> None:
         """Replace the renderer-owned slice actors with an external set."""
@@ -472,7 +472,10 @@ class MeshVisualisation:
         self._render(render)
         return self._main_actor
 
-    def _replace_main_actor(self) -> None:
+    def _replace_main_actor(
+        self,
+        mesh_options: dict[str, Any] | None = None,
+    ) -> Any:
         camera_position = (
             self.plotter.camera_position if self._initialized else None
         )
@@ -485,10 +488,11 @@ class MeshVisualisation:
             name=_MAIN_ACTOR,
             reset_camera=False,
             render=False,
-            **self._mesh_options(),
+            **(self._mesh_options() if mesh_options is None else mesh_options),
         )
         if camera_position is not None:
             self.plotter.camera_position = camera_position
+        return self._main_actor
 
     def update_scalar_frame(
         self, frame_index: int, *, render: bool = True
@@ -623,18 +627,71 @@ class MeshVisualisation:
             self.plotter.remove_actor(actor, reset_camera=False, render=False)
         self._slice_actors.clear()
 
+    def _nearest_nonempty_slice(
+        self,
+        normal: str | Sequence[float],
+        origin: tuple[float, float, float],
+    ) -> pv.DataSet:
+        """Return the requested slice, using the nearest cell if it is empty."""
+        sliced = self.mesh.slice(normal=normal, origin=origin)
+        if sliced.n_points or not self.mesh.n_cells:
+            return sliced
+
+        if isinstance(normal, str):
+            normal_vector = {
+                "x": (1.0, 0.0, 0.0),
+                "y": (0.0, 1.0, 0.0),
+                "z": (0.0, 0.0, 1.0),
+                "-x": (-1.0, 0.0, 0.0),
+                "-y": (0.0, -1.0, 0.0),
+                "-z": (0.0, 0.0, -1.0),
+            }.get(normal.lower())
+            if normal_vector is None:
+                return sliced
+            direction = np.asarray(normal_vector, dtype=np.float64)
+        else:
+            direction = np.asarray(normal, dtype=np.float64)
+            if direction.shape != (3,) or not np.isfinite(direction).all():
+                return sliced
+
+        magnitude = float(np.linalg.norm(direction))
+        if magnitude == 0.0:
+            return sliced
+        direction /= magnitude
+
+        centers = np.asarray(self.mesh.cell_centers().points)
+        finite_centers = centers[np.isfinite(centers).all(axis=1)]
+        if not finite_centers.size:
+            return sliced
+
+        requested_offset = float(np.dot(origin, direction))
+        cell_offsets = finite_centers @ direction
+        nearest_offset = float(
+            cell_offsets[np.argmin(np.abs(cell_offsets - requested_offset))]
+        )
+        fallback_origin = (
+            np.asarray(origin) + (nearest_offset - requested_offset) * direction
+        )
+        return self.mesh.slice(normal=normal, origin=fallback_origin)
+
     def show_slices(
         self,
         visible: bool = True,
         *,
         origin: Sequence[float] | None = None,
         normals: Sequence[str | Sequence[float]] = ("x", "y", "z"),
+        ensure_visible: bool | None = None,
         opacity: float = 1.0,
         show_edges: bool = True,
         line_width: float = 1.0,
         render: bool = True,
     ) -> list[pv.DataSet]:
-        """Show or hide fixed slices through the active mesh."""
+        """Show or hide fixed slices through the active mesh.
+
+        Centre slices that fall in a gap in the mesh are moved to the nearest
+        cell-crossing plane.  Pass an explicit origin to retain exact-plane
+        behavior, or set ``ensure_visible`` directly to override the default.
+        """
         self._remove_slice_actors()
         if not visible:
             self.slices = []
@@ -654,12 +711,18 @@ class MeshVisualisation:
         )
         if len(slice_origin) != 3 or not np.isfinite(slice_origin).all():
             raise ValueError("origin must contain three finite coordinates")
+        keep_slices_visible = (
+            origin is None if ensure_visible is None else bool(ensure_visible)
+        )
 
         slices: list[pv.DataSet] = []
         mesh_options = self._mesh_options()
         mesh_options.pop("show_edges")
         for index, normal in enumerate(normal_values):
-            sliced = self.mesh.slice(normal=normal, origin=slice_origin)
+            if keep_slices_visible:
+                sliced = self._nearest_nonempty_slice(normal, slice_origin)
+            else:
+                sliced = self.mesh.slice(normal=normal, origin=slice_origin)
             slices.append(sliced)
             actor = self.plotter.add_mesh(
                 sliced,
@@ -679,6 +742,7 @@ class MeshVisualisation:
             "visible": True,
             "origin": slice_origin,
             "normals": normal_values,
+            "ensure_visible": keep_slices_visible,
             "opacity": opacity,
             "show_edges": show_edges,
             "line_width": line_width,

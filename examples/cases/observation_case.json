@@ -17,7 +17,7 @@
   "coordinate_systems": [
     {
       "name": "source-vtk-frame",
-      "convention": "unchanged coordinates from the source VTK mesh; local +z is the default rotation axis",
+      "convention": "unchanged coordinates from the source VTK mesh; local +z defines Case A and local +x defines Case B",
       "moving": false,
       "extensions": {}
     }
@@ -49,7 +49,7 @@
   },
   "loading": {
     "event_type": "mild head impact",
-    "description": "A signed unit pulse with loading and bounce-back lobes, scaled by cell distance from the local +z rotation axis.",
+    "description": "A signed unit pulse with loading and bounce-back lobes, evaluated as fixed Case A (+z rotation axis) and Case B (+x rotation axis) presets.",
     "loading_mode": "prescribed reduced-order shear stress",
     "direction": [
       0.0,
@@ -224,7 +224,7 @@
     {
       "asset_id": "maxwell-time",
       "role": "time axis",
-      "location": "generated:brain_strain.simulation.simulate_generalized_maxwell_strain/times",
+      "location": "generated:brain_strain.simulation.simulate_generalized_maxwell_cases/times",
       "format": "numpy-array",
       "field_names": [
         "time"
@@ -235,13 +235,13 @@
       "dtype": "float64",
       "units": "s",
       "description": "Generated at runtime with the referenced 18 ms interval.",
-      "generated_by": "simulate-generalized-maxwell",
+      "generated_by": "simulate-generalized-maxwell-cases",
       "extensions": {}
     },
     {
       "asset_id": "maxwell-strain-series",
       "role": "maximum shear strain result field",
-      "location": "generated:brain_strain.simulation.simulate_generalized_maxwell_strain/scalar_series",
+      "location": "generated:brain_strain.simulation.simulate_generalized_maxwell_cases/cases",
       "format": "numpy-array",
       "field_names": [
         "Maximum shear strain"
@@ -254,17 +254,22 @@
       "dtype": "float64",
       "units": "1",
       "coordinate_system": "source-vtk-frame",
-      "description": "Runtime generalized-Maxwell material-point response.",
-      "generated_by": "simulate-generalized-maxwell",
-      "extensions": {}
+      "description": "Runtime Case A and Case B generalized-Maxwell material-point responses; the declared shape applies to each case.",
+      "generated_by": "simulate-generalized-maxwell-cases",
+      "extensions": {
+        "case_names": [
+          "A",
+          "B"
+        ]
+      }
     }
   ],
   "processing": [
     {
-      "step_id": "simulate-generalized-maxwell",
-      "name": "Integrate generalized Maxwell material response",
+      "step_id": "simulate-generalized-maxwell-cases",
+      "name": "Integrate Case A and Case B generalized Maxwell responses",
       "software": "simulation.py",
-      "code_reference": "brain_strain.simulation.simulate_generalized_maxwell_strain",
+      "code_reference": "brain_strain.simulation.simulate_generalized_maxwell_cases",
       "parameters": {
         "frame_count": 10,
         "duration_seconds": 0.162,
@@ -273,6 +278,11 @@
           0.0,
           0.0,
           1.0
+        ],
+        "case_b_rotation_axis": [
+          1.0,
+          0.0,
+          0.0
         ],
         "target_peak_spatial_mean_mss": 0.017,
         "load_calibration": "target MSS calibrates the fixed reference load; the adjustable model response is not rescaled",

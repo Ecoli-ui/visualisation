@@ -7,7 +7,7 @@ import subprocess
 import sys
 import time
 from argparse import ArgumentParser
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -16,7 +16,7 @@ import numpy as np
 import numpy.typing as npt
 import pyvista as pv
 from vtkmodules.vtkFiltersExtraction import vtkExtractGeometry
-from vtkmodules.vtkRenderingCore import vtkCellPicker
+from vtkmodules.vtkRenderingCore import vtkCellPicker, vtkRenderer
 
 from ..analysis import (
     extract_element_history,
@@ -38,11 +38,13 @@ from ..simulation import (
     DEFAULT_TAU_MIN_SECONDS,
     REFERENCE_DURATION_SECONDS,
     REFERENCE_FRAME_COUNT,
+    SIMULATION_CASE_ROTATION_AXES,
     GeneralizedMaxwellModel,
     ImpactMode,
+    SimulationCase,
     default_branch_fractions,
     logarithmic_relaxation_times,
-    simulate_generalized_maxwell_strain,
+    simulate_generalized_maxwell_cases,
 )
 from .dialogs import choose_open_file, choose_save_file
 from .rendering import MeshVisualisation, VisualisationError
@@ -90,6 +92,7 @@ _UI_LABEL_OFFSET = (45, 5)
 _UI_CELL_INPUT_POSITION = (10, 135)
 _UI_FILE_STATUS_POSITION = (10, 355)
 _SLICE_PANEL_SPLIT = 0.72
+_DUAL_CASE_VIEWPORT_TOP = 0.78
 _SLICE_PANEL_BACKGROUND = "#111827"
 _SLICE_PANEL_TITLES = (
     "Sagittal (X)",
@@ -99,6 +102,15 @@ _SLICE_PANEL_TITLES = (
 _SLICE_PANEL_VIEWS = ("view_yz", "view_xz", "view_xy")
 _SLICE_PANEL_ACTOR_PREFIX = "ui-2d-slice-"
 _SLICE_PANEL_TITLE_PREFIX = "ui-2d-slice-title-"
+_CASE_B_ACTOR = "ui-simulation-case-b"
+_CASE_B_SCALAR_ARRAY = "__ui_simulation_case_b__"
+_CASE_DIFFERENCE_ARRAY = "__ui_simulation_case_a_minus_b__"
+_CASE_A_TITLE = "ui-simulation-case-a-title"
+_CASE_B_TITLE = "ui-simulation-case-b-title"
+_CASE_SELECTION_LABEL = "ui-simulation-case-selection"
+_CASE_B_SCALAR_BAR = "Case B — Maximum shear strain"
+_CASE_DIFFERENCE_SCALAR_BAR = "Case A − Case B"
+_CASE_DIVERGING_CMAP = ("blue", "white", "red")
 _MAIN_RENDERER_LOCATION = (0, 0)
 _SLICE_PANEL_LOCATIONS = ((0, 1), (1, 1), (2, 1))
 _FULL_SLIDER_X_RANGE = (0.35, 0.90)
@@ -146,6 +158,57 @@ _RESULT_EXPORT_METHOD = "Generalized Maxwell (reduced-order demonstration)"
 _CELL_ID_DIGITS = "0123456789"
 _UI_CAPTURED_CHAR_KEYS = frozenset(_CELL_ID_DIGITS + "r")
 _CELL_CLICK_MAX_DRAG_SQUARED = 36
+
+
+def simulation_case_difference(
+    case_a: npt.ArrayLike,
+    case_b: npt.ArrayLike,
+    *,
+    relative_tolerance: float = 1e-5,
+    absolute_tolerance: float | None = None,
+) -> npt.NDArray[np.float64]:
+    """Return signed A-minus-B values with missing units preserved as NaN.
+
+    Positive values mean Case A is higher, negative values mean Case B is
+    higher, and sufficiently similar finite values are snapped to zero so the
+    centre of the diverging colour map is unambiguously white.
+    """
+    a_values = np.asarray(case_a, dtype=np.float64)
+    b_values = np.asarray(case_b, dtype=np.float64)
+    if a_values.shape != b_values.shape:
+        raise ValueError("Case A and Case B values must have the same shape")
+    if relative_tolerance < 0.0 or not np.isfinite(relative_tolerance):
+        raise ValueError("relative_tolerance must be finite and non-negative")
+
+    finite = np.isfinite(a_values) & np.isfinite(b_values)
+    result = np.full(a_values.shape, np.nan, dtype=np.float64)
+    result[finite] = a_values[finite] - b_values[finite]
+    if not finite.any():
+        return result
+
+    if absolute_tolerance is None:
+        magnitude = float(
+            np.max(
+                np.abs(
+                    np.concatenate((a_values[finite], b_values[finite]))
+                )
+            )
+        )
+        absolute_tolerance = max(magnitude * 1e-8, 1e-12)
+    else:
+        absolute_tolerance = float(absolute_tolerance)
+        if absolute_tolerance < 0.0 or not np.isfinite(absolute_tolerance):
+            raise ValueError(
+                "absolute_tolerance must be finite and non-negative"
+            )
+    similar = finite & np.isclose(
+        a_values,
+        b_values,
+        rtol=relative_tolerance,
+        atol=absolute_tolerance,
+    )
+    result[similar] = 0.0
+    return result
 
 
 # ReCoDE part IDs from ``part_list_full.k`` and ``bmctk.py``. Structures
@@ -329,6 +392,8 @@ class UIState:
     show_slices: bool = False
     show_parts: bool = False
     show_simulation_results: bool = False
+    simulation_cases: tuple[SimulationCase, ...] = ("A",)
+    diverging_colormap: bool = False
     drag_select: bool = True
     selected_cell_id: int | None = None
     selected_cell_ids: tuple[int, ...] = ()
@@ -352,6 +417,7 @@ class BrainUI(LocalMeshOpeningUI):
         simulation_impact_mode: ImpactMode = "neck-rotation",
         simulation_target_mean_mss: float | None = None,
         simulation_rotation_axis: npt.ArrayLike = (0.0, 0.0, 1.0),
+        simulation_case_series: Mapping[str, npt.ArrayLike] | None = None,
         initial_threshold: float | None = None,
         off_screen: bool = False,
         window_size: tuple[int, int] = (1200, 850),
@@ -384,12 +450,11 @@ class BrainUI(LocalMeshOpeningUI):
         self._real_scalar_series = (
             None if self.data_is_simulated else self.scalar_series.copy()
         )
-        self._simulated_times = (
-            self.times.copy() if self.data_is_simulated else None
-        )
-        self._simulated_scalar_series = (
-            self.scalar_series.copy() if self.data_is_simulated else None
-        )
+        self._simulated_times: npt.NDArray[np.float64] | None = None
+        self._simulated_scalar_series: npt.NDArray[np.float64] | None = None
+        self._simulated_case_series: dict[
+            SimulationCase, npt.NDArray[np.float64]
+        ] = {}
         self._simulation_frame_count = simulation_frame_count
         self._simulation_duration = float(simulation_duration)
         self._simulation_model = simulation_model
@@ -398,6 +463,7 @@ class BrainUI(LocalMeshOpeningUI):
         self._simulation_rotation_axis = np.asarray(
             simulation_rotation_axis, dtype=np.float64
         )
+        self._provided_simulation_case_series = simulation_case_series
         initial_log_taus = np.log10(self._simulation_model.relaxation_times)
         self._maxwell_log10_tau_bounds = (
             min(
@@ -430,6 +496,12 @@ class BrainUI(LocalMeshOpeningUI):
         self._cell_id_input_error: str | None = None
         self._last_open_directory = _initial_open_directory()
         self._parts_actor: Any | None = None
+        self._case_b_actor: Any | None = None
+        self._case_b_mesh: pv.DataSet | None = None
+        self._dual_case_layout = False
+        self.case_a_button: Any | None = None
+        self.case_b_button: Any | None = None
+        self.diverging_colormap_button: Any | None = None
         self._numeric_char_observer: int | None = None
         self._cell_press_observer: int | None = None
         self._cell_release_observer: int | None = None
@@ -443,9 +515,12 @@ class BrainUI(LocalMeshOpeningUI):
 
         self._validate_inputs()
 
-        finite_values = self.scalar_series[
-            np.isfinite(self.scalar_series)
-        ]
+        if self.data_is_simulated:
+            self._initialize_simulation_cases(
+                self._provided_simulation_case_series
+            )
+
+        finite_values = self._active_range_values()
 
         if finite_values.size == 0:
             raise ValueError(
@@ -516,6 +591,28 @@ class BrainUI(LocalMeshOpeningUI):
         for renderer in self._slice_panel_renderers:
             renderer.SetDraw(False)
         self.plotter.subplot(*_MAIN_RENDERER_LOCATION)
+        self._controls_overlay_renderer = vtkRenderer()
+        self._controls_overlay_renderer.SetLayer(1)
+        self._controls_overlay_renderer.SetViewport(0.0, 0.0, 1.0, 1.0)
+        self._controls_overlay_renderer.SetBackgroundAlpha(0.0)
+        self._controls_overlay_renderer.InteractiveOff()
+        self._controls_background_renderer = vtkRenderer()
+        self._controls_background_renderer.SetLayer(0)
+        self._controls_background_renderer.SetViewport(
+            0.0,
+            _DUAL_CASE_VIEWPORT_TOP,
+            1.0,
+            1.0,
+        )
+        self._controls_background_renderer.SetBackground(0.067, 0.094, 0.153)
+        self._controls_background_renderer.InteractiveOff()
+        self._controls_background_renderer.SetDraw(False)
+        render_window = self.plotter.render_window
+        render_window.SetNumberOfLayers(
+            max(2, int(render_window.GetNumberOfLayers()))
+        )
+        render_window.AddRenderer(self._controls_background_renderer)
+        render_window.AddRenderer(self._controls_overlay_renderer)
         self.plotter.theme.font.color = _UI_FONT_COLOR
         self.plotter.theme.font.size = _UI_LABEL_FONT_SIZE
         self._parameter_window_off_screen = bool(off_screen)
@@ -577,6 +674,94 @@ class BrainUI(LocalMeshOpeningUI):
                 "times must be strictly increasing"
             )
 
+    def _initialize_simulation_cases(
+        self,
+        supplied: Mapping[str, npt.ArrayLike] | None,
+    ) -> None:
+        """Validate or generate the two fixed rotation-axis presets."""
+        expected_shape = (self.times.size, self.mesh.n_cells)
+        if supplied is None:
+            _, generated = simulate_generalized_maxwell_cases(
+                self.mesh,
+                times=self.times,
+                model=self._simulation_model,
+                impact_mode=self._simulation_impact_mode,
+                target_mean_maximum_shear_strain=(
+                    self._simulation_target_mean_mss
+                ),
+            )
+            # Preserve an explicitly supplied initial Case A series while the
+            # companion Case B preset is generated from the fixed X axis.
+            case_values: dict[SimulationCase, npt.NDArray[np.float64]] = {
+                "A": self.scalar_series.copy(),
+                "B": generated["B"],
+            }
+        else:
+            missing = {"A", "B"}.difference(supplied)
+            if missing:
+                names = ", ".join(sorted(missing))
+                raise ValueError(
+                    f"simulation_case_series is missing case(s): {names}"
+                )
+            case_values = {
+                case: np.asarray(supplied[case], dtype=np.float64).copy()
+                for case in ("A", "B")
+            }
+
+        for case, values in case_values.items():
+            if values.shape != expected_shape:
+                raise ValueError(
+                    f"Simulation Case {case} must have shape {expected_shape}; "
+                    f"received {values.shape}"
+                )
+            if not np.isfinite(values).any():
+                raise ValueError(
+                    f"Simulation Case {case} contains no finite values"
+                )
+
+        self._simulated_times = self.times.copy()
+        self._simulated_case_series = case_values
+        self._simulated_scalar_series = case_values["A"]
+        self.scalar_series = case_values["A"].copy()
+
+    def _active_range_values(self) -> npt.NDArray[np.float64]:
+        """Return finite values used by the active shared colour range."""
+        sources = (
+            tuple(self._simulated_case_series.values())
+            if self.data_is_simulated and self._simulated_case_series
+            else (self.scalar_series,)
+        )
+        finite = [values[np.isfinite(values)] for values in sources]
+        nonempty = [values for values in finite if values.size]
+        if not nonempty:
+            return np.empty(0, dtype=np.float64)
+        return np.concatenate(nonempty)
+
+    @property
+    def simulation_case_series(
+        self,
+    ) -> dict[SimulationCase, npt.NDArray[np.float64]]:
+        """Return copies of the generated Case A and Case B result series."""
+        return {
+            case: values.copy()
+            for case, values in self._simulated_case_series.items()
+        }
+
+    @property
+    def selected_simulation_cases(self) -> tuple[SimulationCase, ...]:
+        """Return the currently selected simulation presets."""
+        return self.state.simulation_cases
+
+    @property
+    def current_case_difference(self) -> npt.NDArray[np.float64] | None:
+        """Return the current signed A-minus-B frame when both exist."""
+        if not {"A", "B"}.issubset(self._simulated_case_series):
+            return None
+        return simulation_case_difference(
+            self._simulated_case_series["A"][self.state.time_index],
+            self._simulated_case_series["B"][self.state.time_index],
+        )
+
     @property
     def has_real_results(self) -> bool:
         """Return whether a genuine embedded or supplied scalar series exists."""
@@ -589,11 +774,11 @@ class BrainUI(LocalMeshOpeningUI):
         self,
     ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         """Create the generalized-Maxwell series when the user requests it."""
-        if (
-            self._simulated_times is not None
-            and self._simulated_scalar_series is not None
-        ):
-            return self._simulated_times, self._simulated_scalar_series
+        if self._simulated_times is not None and {
+            "A",
+            "B",
+        }.issubset(self._simulated_case_series):
+            return self._simulated_times, self._simulated_case_series["A"]
 
         frame_count = self._simulation_frame_count
         use_real_times = frame_count is None and self.has_real_results
@@ -603,7 +788,7 @@ class BrainUI(LocalMeshOpeningUI):
                 if self._real_scalar_series is not None
                 else DEFAULT_SIMULATION_FRAME_COUNT
             )
-        generated_times, generated_series = simulate_generalized_maxwell_strain(
+        generated_times, generated_cases = simulate_generalized_maxwell_cases(
             self.mesh,
             frame_count=frame_count,
             duration=self._simulation_duration,
@@ -611,11 +796,11 @@ class BrainUI(LocalMeshOpeningUI):
             model=self._simulation_model,
             impact_mode=self._simulation_impact_mode,
             target_mean_maximum_shear_strain=self._simulation_target_mean_mss,
-            rotation_axis=self._simulation_rotation_axis,
         )
         self._simulated_times = generated_times
-        self._simulated_scalar_series = generated_series
-        return generated_times, generated_series
+        self._simulated_case_series = generated_cases
+        self._simulated_scalar_series = generated_cases["A"]
+        return generated_times, generated_cases["A"]
 
     def _configure_result_sliders(self) -> None:
         """Update both slider ranges after changing the active data source."""
@@ -668,7 +853,10 @@ class BrainUI(LocalMeshOpeningUI):
         self.times = np.asarray(times, dtype=np.float64)
         self.scalar_series = np.asarray(scalar_series, dtype=np.float64)
         self._validate_inputs()
-        finite_values = self.scalar_series[np.isfinite(self.scalar_series)]
+        self.data_is_simulated = simulated
+        if not simulated:
+            self.state.diverging_colormap = False
+        finite_values = self._active_range_values()
         if finite_values.size == 0:
             raise ValueError("scalar_series contains no finite values")
 
@@ -681,7 +869,6 @@ class BrainUI(LocalMeshOpeningUI):
                 self.global_clim[0],
                 self.global_clim[0] + 1.0,
             )
-        self.data_is_simulated = simulated
         next_field_name = (
             "Maximum shear strain" if simulated else self._real_field_name
         )
@@ -712,6 +899,7 @@ class BrainUI(LocalMeshOpeningUI):
         self._set_toggle_button_state(self.simulation_button, simulated)
         self._update_data_source_badge(render=False)
         self._sync_maxwell_widgets()
+        self._sync_simulation_case_widgets()
         self._refresh_scene()
 
     def show_simulation_results(self, enabled: bool = True) -> bool:
@@ -719,7 +907,9 @@ class BrainUI(LocalMeshOpeningUI):
         requested = bool(enabled)
         if requested:
             if not self.data_is_simulated:
-                times, series = self._ensure_simulated_results()
+                times, _ = self._ensure_simulated_results()
+                primary_case = self.state.simulation_cases[0]
+                series = self._simulated_case_series[primary_case]
                 self._activate_results(times, series, simulated=True)
             return True
 
@@ -897,11 +1087,10 @@ class BrainUI(LocalMeshOpeningUI):
             if self._real_scalar_series is not None
             else None
         )
-        simulated_peak = (
-            float(np.nanmax(self._simulated_scalar_series))
-            if self._simulated_scalar_series is not None
-            else None
-        )
+        simulated_peaks = {
+            case: float(np.nanmax(values))
+            for case, values in self._simulated_case_series.items()
+        }
         active_label = "SIMULATED" if self.data_is_simulated else "REAL"
         lines = [
             f"Active source: {active_label}",
@@ -914,10 +1103,14 @@ class BrainUI(LocalMeshOpeningUI):
                 if real_peak is not None
                 else "Actual real-data maximum: unavailable"
             ),
-            (
-                f"Calculated maximum strain: {simulated_peak:.6g}"
-                if simulated_peak is not None
-                else "Calculated maximum strain: calculated during export"
+            *(
+                [
+                    f"Calculated Case {case} maximum strain: "
+                    f"{simulated_peaks[case]:.6g}"
+                    for case in ("A", "B")
+                    if case in simulated_peaks
+                ]
+                or ["Calculated maximum strain: calculated during export"]
             ),
         ]
         self.result_plotter.add_text(
@@ -1485,6 +1678,43 @@ class BrainUI(LocalMeshOpeningUI):
             self._maxwell_widgets_updating = False
         self._update_parameter_window_layout(force=True)
 
+    def _sync_simulation_case_widgets(self) -> None:
+        """Synchronize the A/B selectors and diverging-colour control."""
+        available = self.data_is_simulated
+        selected = set(self.state.simulation_cases)
+        controls = (
+            (getattr(self, "case_a_button", None), "A" in selected),
+            (getattr(self, "case_b_button", None), "B" in selected),
+            (
+                getattr(self, "diverging_colormap_button", None),
+                self.state.diverging_colormap,
+            ),
+        )
+        for button, enabled in controls:
+            if button is None:
+                continue
+            button.SetProcessEvents(available)
+            button.SetEnabled(available)
+            self._set_toggle_button_state(button, enabled)
+
+        renderer = self.plotter.renderers[0]
+        for name in (
+            "simulation_case_a_selector_label",
+            "simulation_case_b_selector_label",
+            "simulation_diverging_colormap_label",
+        ):
+            actor = renderer.actors.get(name)
+            if actor is not None:
+                actor.SetVisibility(available)
+
+        slices_button = getattr(self, "slices_button", None)
+        if slices_button is not None:
+            slices_available = not (
+                available and len(self.state.simulation_cases) == 2
+            )
+            slices_button.SetProcessEvents(slices_available)
+            slices_button.SetEnabled(slices_available)
+
     def _set_slider_width(self, *, split_view: bool) -> None:
         x_start, x_end = (
             _SPLIT_SLIDER_X_RANGE
@@ -1529,6 +1759,9 @@ class BrainUI(LocalMeshOpeningUI):
             fmt="1" if final_frame == 0 else "%.0f",
             interaction_event="end",
         )
+        self.time_slider.SetCurrentRenderer(
+            self._controls_overlay_renderer
+        )
         self._style_slider_text(self.time_slider)
         if final_frame == 0:
             # Keep the one-frame bar visible while preventing it from moving
@@ -1544,6 +1777,9 @@ class BrainUI(LocalMeshOpeningUI):
             pointb=(0.90, 0.84),
             fmt="%.3f",
             interaction_event="end",
+        )
+        self.threshold_slider.SetCurrentRenderer(
+            self._controls_overlay_renderer
         )
         self._style_slider_text(self.threshold_slider)
         self._build_maxwell_widgets()
@@ -1737,6 +1973,57 @@ class BrainUI(LocalMeshOpeningUI):
         )
         self.parameter_window_button.SetProcessEvents(self.data_is_simulated)
         self.parameter_window_button.SetEnabled(self.data_is_simulated)
+
+        self.case_a_button = self.plotter.add_checkbox_button_widget(
+            callback=self._on_case_a_toggle,
+            value=True,
+            position=(875, 300),
+            size=32,
+            color_on="tomato",
+            color_off="grey",
+        )
+        self.plotter.add_text(
+            "Case A — axis (0,0,1)",
+            position=(917, 304),
+            font_size=_UI_DETAIL_FONT_SIZE,
+            color=_UI_FONT_COLOR,
+            name="simulation_case_a_selector_label",
+        )
+
+        self.case_b_button = self.plotter.add_checkbox_button_widget(
+            callback=self._on_case_b_toggle,
+            value=False,
+            position=(875, 250),
+            size=32,
+            color_on="dodgerblue",
+            color_off="grey",
+        )
+        self.plotter.add_text(
+            "Case B — axis (1,0,0)",
+            position=(917, 254),
+            font_size=_UI_DETAIL_FONT_SIZE,
+            color=_UI_FONT_COLOR,
+            name="simulation_case_b_selector_label",
+        )
+
+        self.diverging_colormap_button = (
+            self.plotter.add_checkbox_button_widget(
+                callback=self._on_diverging_colormap_toggle,
+                value=False,
+                position=(875, 200),
+                size=32,
+                color_on="mediumpurple",
+                color_off="grey",
+            )
+        )
+        self.plotter.add_text(
+            "Diverging A − B colours",
+            position=(917, 204),
+            font_size=_UI_DETAIL_FONT_SIZE,
+            color=_UI_FONT_COLOR,
+            name="simulation_diverging_colormap_label",
+        )
+        self._sync_simulation_case_widgets()
         if not self.has_real_results:
             # Simulated data is the only available source, so keep the visible
             # switch selected and prevent it from implying a real alternative.
@@ -1767,6 +2054,21 @@ class BrainUI(LocalMeshOpeningUI):
         self.plotter.add_key_event(
             "c",
             self.clear_selected_cells,
+        )
+
+        self.plotter.add_key_event(
+            "a",
+            lambda: self.select_simulation_cases(("A",)),
+        )
+
+        self.plotter.add_key_event(
+            "b",
+            lambda: self.select_simulation_cases(("B",)),
+        )
+
+        self.plotter.add_key_event(
+            "d",
+            self.toggle_diverging_colormap,
         )
 
         self.plotter.add_key_event(
@@ -1942,6 +2244,9 @@ class BrainUI(LocalMeshOpeningUI):
     def _apply_maxwell_model(self, model: GeneralizedMaxwellModel) -> None:
         """Store a slider-edited model and regenerate active simulation data."""
         previous_model = self._simulation_model
+        previous_times = self._simulated_times
+        previous_cases = self._simulated_case_series
+        previous_series = self._simulated_scalar_series
         previous_index = self.state.time_index
         self._simulation_model = model
         self._sync_maxwell_widgets()
@@ -1953,8 +2258,8 @@ class BrainUI(LocalMeshOpeningUI):
             return
 
         try:
-            generated_times, generated_series = (
-                simulate_generalized_maxwell_strain(
+            generated_times, generated_cases = (
+                simulate_generalized_maxwell_cases(
                     self.mesh,
                     times=self.times,
                     model=model,
@@ -1962,19 +2267,23 @@ class BrainUI(LocalMeshOpeningUI):
                     target_mean_maximum_shear_strain=(
                         self._simulation_target_mean_mss
                     ),
-                    rotation_axis=self._simulation_rotation_axis,
                 )
             )
         except Exception:
             self._simulation_model = previous_model
+            self._simulated_times = previous_times
+            self._simulated_case_series = previous_cases
+            self._simulated_scalar_series = previous_series
             self._sync_maxwell_widgets()
             raise
 
         self._simulated_times = generated_times
-        self._simulated_scalar_series = generated_series
+        self._simulated_case_series = generated_cases
+        self._simulated_scalar_series = generated_cases["A"]
+        primary_case = self.state.simulation_cases[0]
         self._activate_results(
             generated_times,
-            generated_series,
+            generated_cases[primary_case],
             simulated=True,
         )
         restored_index = min(previous_index, self.times.size - 1)
@@ -2164,6 +2473,35 @@ class BrainUI(LocalMeshOpeningUI):
                 self.data_is_simulated,
             )
             self._update_file_status(str(exc), error=True)
+
+    def _on_case_a_toggle(self, enabled: bool) -> None:
+        if not self._callbacks_active or not self.data_is_simulated:
+            return
+        selected = set(self.state.simulation_cases)
+        if enabled:
+            selected.add("A")
+        else:
+            selected.discard("A")
+        if not selected:
+            selected.add("A")
+        self.select_simulation_cases(selected)
+
+    def _on_case_b_toggle(self, enabled: bool) -> None:
+        if not self._callbacks_active or not self.data_is_simulated:
+            return
+        selected = set(self.state.simulation_cases)
+        if enabled:
+            selected.add("B")
+        else:
+            selected.discard("B")
+        if not selected:
+            selected.add("B")
+        self.select_simulation_cases(selected)
+
+    def _on_diverging_colormap_toggle(self, enabled: bool) -> None:
+        if not self._callbacks_active or not self.data_is_simulated:
+            return
+        self.show_diverging_colormap(bool(enabled))
 
     def _on_parameter_window_button(self, _enabled: bool) -> None:
         """Open the simulation controls as a momentary button action."""
@@ -2615,6 +2953,199 @@ class BrainUI(LocalMeshOpeningUI):
         self._remove_slice_panel_actors()
         self._set_slice_panel_layout(False)
 
+    def _remove_case_b_actor(self) -> None:
+        renderer = self._slice_panel_renderers[0]
+        for actor_or_name in (
+            self._case_b_actor,
+            _CASE_B_ACTOR,
+            _CASE_B_TITLE,
+        ):
+            if actor_or_name is None:
+                continue
+            try:
+                renderer.remove_actor(
+                    actor_or_name,
+                    reset_camera=False,
+                    render=False,
+                )
+            except (KeyError, ValueError):
+                pass
+        self._case_b_actor = None
+        self._case_b_mesh = None
+
+    def _set_dual_case_layout(self, enabled: bool) -> None:
+        """Use the main and first slice renderer as equal case panels."""
+        requested = bool(enabled)
+        self._controls_background_renderer.SetDraw(requested)
+        if requested:
+            self._remove_slice_panel_actors()
+            self.plotter.renderers[0].viewport = (
+                0.0,
+                0.0,
+                0.5,
+                _DUAL_CASE_VIEWPORT_TOP,
+            )
+            right_renderer = self._slice_panel_renderers[0]
+            right_renderer.viewport = (
+                0.5,
+                0.0,
+                1.0,
+                _DUAL_CASE_VIEWPORT_TOP,
+            )
+            right_renderer.SetDraw(True)
+            right_renderer.set_background(_SLICE_PANEL_BACKGROUND)
+            for renderer in self._slice_panel_renderers[1:]:
+                renderer.SetDraw(False)
+            self._set_slider_width(split_view=False)
+        else:
+            if self._dual_case_layout:
+                self.plotter.unlink_views((0, 1))
+            self._remove_case_b_actor()
+            main_viewport = (
+                (0.0, 0.0, _SLICE_PANEL_SPLIT, 1.0)
+                if self.state.show_slices
+                else (0.0, 0.0, 1.0, 1.0)
+            )
+            self.plotter.renderers[0].viewport = main_viewport
+            for renderer, viewport in zip(
+                self._slice_panel_renderers,
+                self._slice_panel_viewports,
+                strict=True,
+            ):
+                renderer.viewport = viewport
+                renderer.SetDraw(self.state.show_slices)
+            self._set_slider_width(split_view=self.state.show_slices)
+        self._dual_case_layout = requested
+        self.plotter.subplot(*_MAIN_RENDERER_LOCATION)
+
+    def _case_difference_range(self) -> tuple[float, float]:
+        values = simulation_case_difference(
+            self._simulated_case_series["A"],
+            self._simulated_case_series["B"],
+        )
+        finite = values[np.isfinite(values)]
+        maximum = float(np.max(np.abs(finite))) if finite.size else 0.0
+        if maximum == 0.0:
+            maximum = 1.0
+        return -maximum, maximum
+
+    def _refresh_simulation_case_view(self) -> None:
+        """Apply single- or dual-case layout and the requested colour mode."""
+        main_renderer = self.plotter.renderers[0]
+        if not self.data_is_simulated:
+            self._set_dual_case_layout(False)
+            for name in (_CASE_A_TITLE, _CASE_SELECTION_LABEL):
+                actor = main_renderer.actors.get(name)
+                if actor is not None:
+                    actor.SetVisibility(False)
+            return
+
+        selected = self.state.simulation_cases
+        both = selected == ("A", "B")
+        dual_layout = both and not self.state.diverging_colormap
+        if dual_layout:
+            self._set_dual_case_layout(True)
+        else:
+            self._set_dual_case_layout(False)
+
+        difference = self.current_case_difference
+        if self.state.diverging_colormap and both:
+            assert difference is not None
+            self.visualizer.mesh.cell_data[_CASE_DIFFERENCE_ARRAY] = difference
+            self._remove_scalar_bar(self.field_name)
+            self.visualizer.replace_main_actor(
+                scalars=_CASE_DIFFERENCE_ARRAY,
+                preference="cell",
+                clim=self._case_difference_range(),
+                cmap=list(_CASE_DIVERGING_CMAP),
+                nan_color="grey",
+                show_edges=False,
+                scalar_bar_args={"title": _CASE_DIFFERENCE_SCALAR_BAR},
+            )
+        else:
+            self._remove_scalar_bar(_CASE_DIFFERENCE_SCALAR_BAR)
+
+        primary_case = selected[0]
+        if self.state.diverging_colormap and both:
+            primary_label = "CASE A − CASE B — DIVERGING COMPARISON"
+            primary_color = "mediumpurple"
+        else:
+            primary_label = (
+                "CASE A — rotation_axis = (0, 0, 1)"
+                if primary_case == "A"
+                else "CASE B — rotation_axis = (1, 0, 0)"
+            )
+            primary_color = "tomato" if primary_case == "A" else "dodgerblue"
+        self.plotter.subplot(*_MAIN_RENDERER_LOCATION)
+        self.plotter.add_text(
+            primary_label,
+            position="upper_edge",
+            font_size=_UI_STATUS_FONT_SIZE,
+            color=primary_color,
+            name=_CASE_A_TITLE,
+            viewport=True,
+            render=False,
+        )
+
+        if not dual_layout:
+            return
+
+        primary_camera_position = self.plotter.camera_position
+        self._remove_case_b_actor()
+        self._case_b_mesh = self.visualizer.mesh.copy(deep=True)
+        self.plotter.subplot(*_SLICE_PANEL_LOCATIONS[0])
+        if self.state.diverging_colormap:
+            assert difference is not None
+            self._case_b_mesh.cell_data[_CASE_DIFFERENCE_ARRAY] = difference
+            mesh_options = {
+                "scalars": _CASE_DIFFERENCE_ARRAY,
+                "preference": "cell",
+                "clim": self._case_difference_range(),
+                "cmap": list(_CASE_DIVERGING_CMAP),
+                "nan_color": "grey",
+                "show_edges": False,
+                "show_scalar_bar": False,
+            }
+        elif self.state.show_parts:
+            mesh_options = self._part_mesh_options(
+                self._case_b_mesh,
+                show_scalar_bar=False,
+            )
+        else:
+            case_b_values = self._simulated_case_series["B"][
+                self.state.time_index
+            ]
+            self._case_b_mesh.cell_data[_CASE_B_SCALAR_ARRAY] = case_b_values
+            mesh_options = {
+                "scalars": _CASE_B_SCALAR_ARRAY,
+                "preference": "cell",
+                "clim": self.global_clim,
+                "cmap": "viridis",
+                "nan_color": "grey",
+                "show_edges": False,
+                "scalar_bar_args": {"title": _CASE_B_SCALAR_BAR},
+            }
+        self._case_b_actor = self.plotter.add_mesh(
+            self._case_b_mesh,
+            name=_CASE_B_ACTOR,
+            pickable=False,
+            reset_camera=False,
+            render=False,
+            **mesh_options,
+        )
+        self.plotter.add_text(
+            "CASE B — rotation_axis = (1, 0, 0)",
+            position="upper_edge",
+            font_size=_UI_STATUS_FONT_SIZE,
+            color="dodgerblue",
+            name=_CASE_B_TITLE,
+            viewport=True,
+            render=False,
+        )
+        self.plotter.camera_position = primary_camera_position
+        self.plotter.link_views((0, 1))
+        self.plotter.subplot(*_MAIN_RENDERER_LOCATION)
+
     def _refresh_parts_actor(self) -> Any:
         self._remove_parts_actor()
         self._remove_scalar_bar(self.field_name)
@@ -2688,6 +3219,8 @@ class BrainUI(LocalMeshOpeningUI):
             else:
                 self._update_slice_panels(self.visualizer.slices)
 
+        self._refresh_simulation_case_view()
+
         if self.state.show_hotspots:
             self._refresh_hotspots()
 
@@ -2753,6 +3286,15 @@ class BrainUI(LocalMeshOpeningUI):
             if self.state.show_parts
             else ""
         )
+        case_view = ""
+        if self.data_is_simulated:
+            selected_cases = " + ".join(self.state.simulation_cases)
+            case_view = f"Simulation case: {selected_cases}\n"
+            if self.state.diverging_colormap:
+                case_view += (
+                    "Colours: red=A higher, blue=B higher, "
+                    "white=similar, grey=missing\n"
+                )
         selected_cell_index = (
             str(self.state.selected_cell_id)
             if self.state.selected_cell_id is not None
@@ -2769,6 +3311,7 @@ class BrainUI(LocalMeshOpeningUI):
             peak_cell_index = str(self.peak.element_index)
         text = (
             view
+            + case_view
             + (
                 "Data source: SIMULATED (generalized Maxwell, reduced order)\n"
                 if self.data_is_simulated
@@ -2813,6 +3356,7 @@ class BrainUI(LocalMeshOpeningUI):
         actors = (
             self.visualizer.main_actor,
             self._parts_actor,
+            self._case_b_actor,
         )
         for actor in actors:
             if actor is not None:
@@ -2840,11 +3384,109 @@ class BrainUI(LocalMeshOpeningUI):
     # Commands
     # --------------------------------------------------
 
+    @staticmethod
+    def _normalize_simulation_case_selection(
+        cases: str | Sequence[str] | set[str],
+    ) -> tuple[SimulationCase, ...]:
+        if isinstance(cases, str):
+            compact = cases.strip().upper().replace(" ", "")
+            if compact in {"BOTH", "A+B", "AB"}:
+                requested = {"A", "B"}
+            else:
+                requested = {compact}
+        else:
+            requested = {str(case).strip().upper() for case in cases}
+        if not requested or not requested.issubset({"A", "B"}):
+            raise ValueError("cases must select Case A, Case B, or both")
+        return tuple(
+            case for case in ("A", "B") if case in requested
+        )  # type: ignore[return-value]
+
+    def select_simulation_cases(
+        self,
+        cases: str | Sequence[str] | set[str],
+    ) -> tuple[SimulationCase, ...]:
+        """Select Case A, Case B, or both fixed-axis simulation presets."""
+        selected = self._normalize_simulation_case_selection(cases)
+        if not self.data_is_simulated:
+            self.show_simulation_results(True)
+        self._ensure_simulated_results()
+
+        if len(selected) == 2 and self.state.show_slices:
+            self.show_slices(False)
+        if len(selected) != 2:
+            self.state.diverging_colormap = False
+        self.state.simulation_cases = selected
+
+        primary_case = selected[0]
+        self.scalar_series = self._simulated_case_series[primary_case].copy()
+        assert self._simulated_times is not None
+        self.times = self._simulated_times.copy()
+        self._validate_inputs()
+
+        finite_values = self._active_range_values()
+        self.global_clim = (
+            float(np.min(finite_values)),
+            float(np.max(finite_values)),
+        )
+        if self.global_clim[0] == self.global_clim[1]:
+            self.global_clim = (
+                self.global_clim[0],
+                self.global_clim[0] + 1.0,
+            )
+        current_index = min(self.state.time_index, self.times.size - 1)
+        self.state.time_index = current_index
+        self.peak = find_global_peak(
+            self.scalar_series,
+            self.times,
+            self.cell_centers,
+        )
+        self.visualizer.replace_scalar_frames(
+            self.scalar_series,
+            times=self.times,
+            scalar_name=self.field_name,
+            frame_index=current_index,
+            render=False,
+        )
+        self.visualizer.set_scalar_range(self.global_clim, render=False)
+        self._configure_result_sliders()
+        self.time_slider.GetRepresentation().SetValue(float(current_index))
+        self._sync_simulation_case_widgets()
+        self._refresh_scene()
+        return selected
+
+    def show_diverging_colormap(self, enabled: bool = True) -> bool:
+        """Colour both cases by signed A-minus-B values."""
+        requested = bool(enabled)
+        if requested:
+            if not self.data_is_simulated:
+                self.show_simulation_results(True)
+            if self.state.simulation_cases != ("A", "B"):
+                self.select_simulation_cases(("A", "B"))
+            if self.state.show_parts:
+                self.show_parts(False)
+        self.state.diverging_colormap = requested
+        self._sync_simulation_case_widgets()
+        self._refresh_scene()
+        return self.state.diverging_colormap
+
+    def toggle_diverging_colormap(self) -> bool:
+        """Toggle the signed Case A/Case B colour comparison."""
+        return self.show_diverging_colormap(
+            not self.state.diverging_colormap
+        )
+
     def show_slices(
         self,
         enabled: bool = True,
     ) -> list[pv.DataSet]:
         """Show or hide three orthogonal slices through the active frame."""
+        if (
+            enabled
+            and self.data_is_simulated
+            and self.state.simulation_cases == ("A", "B")
+        ):
+            enabled = False
         self.state.show_slices = bool(enabled)
         self._set_toggle_button_state(
             self.slices_button,
@@ -2872,6 +3514,9 @@ class BrainUI(LocalMeshOpeningUI):
     ) -> npt.NDArray[np.int64]:
         """Color cells by part ID, or restore the active strain colors."""
         requested = bool(enabled)
+        if requested and self.state.diverging_colormap:
+            self.state.diverging_colormap = False
+            self._sync_simulation_case_widgets()
         if requested and (
             self.part_array_name is None or not self.part_ids.size
         ):
@@ -3067,19 +3712,19 @@ class BrainUI(LocalMeshOpeningUI):
                 "Blank means the impact-mode reference amplitude was used.",
             ),
             ResultParameter(
-                "Loading",
-                "Rotation axis X",
-                float(self._simulation_rotation_axis[0]),
+                "Interface",
+                "Selected simulation cases",
+                " + ".join(self.state.simulation_cases),
             ),
             ResultParameter(
                 "Loading",
-                "Rotation axis Y",
-                float(self._simulation_rotation_axis[1]),
+                "Case A rotation axis",
+                str(SIMULATION_CASE_ROTATION_AXES["A"]),
             ),
             ResultParameter(
                 "Loading",
-                "Rotation axis Z",
-                float(self._simulation_rotation_axis[2]),
+                "Case B rotation axis",
+                str(SIMULATION_CASE_ROTATION_AXES["B"]),
             ),
             ResultParameter(
                 "Material",
@@ -3190,7 +3835,7 @@ class BrainUI(LocalMeshOpeningUI):
 
     def _build_result_export_data(self) -> ResultExportData:
         """Snapshot real, simulated, parameter, and selection state."""
-        simulated_times, simulated_values = self._ensure_simulated_results()
+        simulated_times, _ = self._ensure_simulated_results()
         series: list[ResultSeries] = []
         if self._real_times is not None and self._real_scalar_series is not None:
             series.append(
@@ -3202,16 +3847,21 @@ class BrainUI(LocalMeshOpeningUI):
                     values=self._real_scalar_series,
                 )
             )
-        series.append(
-            ResultSeries(
-                source_type="Simulated",
-                source_name="Generalized Maxwell calculation",
-                field_name="Maximum shear strain",
-                times=simulated_times,
-                values=simulated_values,
-                unit="1",
+        for case in ("A", "B"):
+            axis = SIMULATION_CASE_ROTATION_AXES[case]
+            series.append(
+                ResultSeries(
+                    source_type="Simulated",
+                    source_name=(
+                        f"Generalized Maxwell Case {case} "
+                        f"(rotation_axis={axis})"
+                    ),
+                    field_name="Maximum shear strain",
+                    times=simulated_times,
+                    values=self._simulated_case_series[case],
+                    unit="1",
+                )
             )
-        )
         source_element_ids = (
             {
                 cell_index: int(self.element_ids[cell_index])
@@ -3223,7 +3873,8 @@ class BrainUI(LocalMeshOpeningUI):
         return ResultExportData(
             simulation_method=_RESULT_EXPORT_METHOD,
             active_source=(
-                "Generalized Maxwell calculation"
+                "Generalized Maxwell Case "
+                + " + ".join(self.state.simulation_cases)
                 if self.data_is_simulated
                 else "Real result data"
             ),
@@ -3666,7 +4317,10 @@ def _build_argument_parser() -> ArgumentParser:
         type=float,
         default=(0.0, 0.0, 1.0),
         metavar=("X", "Y", "Z"),
-        help="rotation axis in the mesh coordinate frame",
+        help=(
+            "legacy compatibility option; the viewer now always generates "
+            "Case A (0,0,1) and Case B (1,0,0)"
+        ),
     )
     parser.add_argument("--threshold", type=float)
     parser.add_argument(
@@ -3768,6 +4422,9 @@ def create_ui_from_args(
     data_is_simulated = real_series is None
     series = real_series
     generated_times: npt.NDArray[np.float64] | None = None
+    generated_case_series: dict[
+        SimulationCase, npt.NDArray[np.float64]
+    ] | None = None
     if data_is_simulated:
         frame_count = (
             int(args.frames)
@@ -3778,16 +4435,18 @@ def create_ui_from_args(
                 else DEFAULT_SIMULATION_FRAME_COUNT
             )
         )
-        generated_times, series = simulate_generalized_maxwell_strain(
-            mesh,
-            frame_count=frame_count,
-            duration=args.duration,
-            times=prepared.source_times,
-            model=simulation_model,
-            impact_mode=args.impact_mode,
-            target_mean_maximum_shear_strain=args.target_mean_mss,
-            rotation_axis=args.rotation_axis,
+        generated_times, generated_case_series = (
+            simulate_generalized_maxwell_cases(
+                mesh,
+                frame_count=frame_count,
+                duration=args.duration,
+                times=prepared.source_times,
+                model=simulation_model,
+                impact_mode=args.impact_mode,
+                target_mean_maximum_shear_strain=args.target_mean_mss,
+            )
         )
+        series = generated_case_series["A"]
         field_name = "Maximum shear strain"
 
     assert series is not None
@@ -3855,6 +4514,7 @@ def create_ui_from_args(
         simulation_impact_mode=args.impact_mode,
         simulation_target_mean_mss=args.target_mean_mss,
         simulation_rotation_axis=args.rotation_axis,
+        simulation_case_series=generated_case_series,
         initial_threshold=args.threshold,
         off_screen=args.off_screen or args.screenshot is not None,
         window_size=tuple(args.window_size),
@@ -3893,6 +4553,7 @@ __all__ = [
     "UIState",
     "create_ui_from_args",
     "main",
+    "simulation_case_difference",
 ]
 
 

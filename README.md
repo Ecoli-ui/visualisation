@@ -290,12 +290,14 @@ r_inf + sum_i g_i = 1
 ```
 
 and integrates the independent Maxwell-branch stresses under a prescribed
-piecewise-linear shear-stress history. The spatial load grows with distance
-from a configurable rotation axis. A fixed reference load is calibrated to
-the reported atlas maximum-shear-strain reference for neck rotation (0.017)
-or neck extension (0.011); adjustable model responses are not rescaled, so
-material changes remain visible. The default temporal spacing and strain
-scales reference [Gomez et al. (2021)](https://pmc.ncbi.nlm.nih.gov/articles/PMC8220272/).
+piecewise-linear shear-stress history. Every simulation generates two presets
+on the same timeline: Case A uses `rotation_axis = (0, 0, 1)` and Case B uses
+`rotation_axis = (1, 0, 0)`. The spatial load grows with distance from the
+selected axis. A fixed reference load is calibrated to the reported atlas
+maximum-shear-strain reference for neck rotation (0.017) or neck extension
+(0.011); adjustable model responses are not rescaled, so material changes
+remain visible. The default temporal spacing and strain scales reference
+[Gomez et al. (2021)](https://pmc.ncbi.nlm.nih.gov/articles/PMC8220272/).
 The paper reports measured kinematics, not Maxwell coefficients: the default
 normalized moduli and relaxation times are declared modelling assumptions.
 
@@ -310,8 +312,7 @@ brain-strain path/to/mesh.vtk \
   --modulus-scale 1.25 \
   --r-infinity 0.4 \
   --gi 0.25 0.15 0.12 0.08 \
-  --log10-tau -3 -2 -1 0 \
-  --rotation-axis 0 0 1
+  --log10-tau -3 -2 -1 0
 ```
 
 The adjustable constraints are:
@@ -338,6 +339,13 @@ remaining transient fraction over the other branches so the Prony constraint
 continues to hold. Inactive `g_i` and `tau_i` sliders are hidden when `N` is
 below six. Relaxation-time sliders display `log10(tau / s)`.
 
+Use the **Case A** and **Case B** selectors to show either preset. Selecting
+both closes and disables **Show slices**, then places Case A on the left and
+Case B on the right. **Diverging A − B colours** replaces that layout with one
+full-width signed-comparison model: red means A is higher, blue means B is
+higher, white means the values are similar, and grey means the cell is missing
+from either case.
+
 This calculation is a reduced-order constitutive response at independent
 material points. It does not solve finite-element momentum balance, contact,
 or anatomical boundary conditions and is not physically validated.
@@ -346,8 +354,8 @@ or anatomical boundary conditions and is not physically validated.
 
 Click **Open result output** (or press `E`) to open a separate, unobstructed
 result section. It shows the active source, frame, time, real-data maximum,
-and calculated maximum strain. **Export Excel (.xlsx)** opens a native save
-dialog and writes an analysis-ready workbook containing:
+and calculated Case A/Case B maximum strains. **Export Excel (.xlsx)** opens
+a native save dialog and writes an analysis-ready workbook containing:
 
 - **Results Summary** for the simulation method, active state, calculated
   maximum strain, actual real-data maximum, and their peak locations/times.
@@ -359,8 +367,8 @@ dialog and writes an analysis-ready workbook containing:
   statistics of every selected cell.
 - **Data Dictionary** for field definitions and interpretation limits.
 
-When real result data are loaded, the workbook retains both the real series
-and the generalized-Maxwell calculation even if only one source is currently
+When real result data are loaded, the workbook retains the real series and
+both generalized-Maxwell presets even if only one source is currently
 displayed. It keeps them separate and does not assume matching units or
 scientific equivalence. The workbook schema is extendable through
 `ResultWorkbook.add_sheet()` in [`export`](src/brain_strain/io/export.py).
@@ -376,6 +384,10 @@ scientific equivalence. The workbook schema is extendable through
 - **Show simulation results** switches from real results to the clearly
   labelled demonstration series. It remains selected when no real results are
   available.
+- **Case A** and **Case B** select the fixed Z-axis and X-axis simulations.
+  Selecting both shows the models side by side and turns slices off.
+- **Diverging A − B colours** compares both cases with red/blue/white values
+  and grey missing cells.
 - **Maxwell parameter sliders** appear in a separate **Simulation parameters**
   window only after clicking **Open simulation parameters**. They adjust `N`,
   `E0`/`G0`, `r_inf`, every active `g_i`, and every active logarithmic `tau_i`

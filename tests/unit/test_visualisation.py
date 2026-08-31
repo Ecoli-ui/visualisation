@@ -34,6 +34,32 @@ class MeshVisualisationTests(unittest.TestCase):
         self.viewer.update_scalar_frame(1, render=False)
         self.assertEqual(self.viewer.current_frame, 1)
 
+    def test_default_sagittal_slice_moves_out_of_a_midline_gap(self) -> None:
+        left = pv.ImageData(
+            dimensions=(2, 2, 2),
+            origin=(-2.0, -0.5, -0.5),
+        ).cast_to_unstructured_grid()
+        right = pv.ImageData(
+            dimensions=(2, 2, 2),
+            origin=(1.0, -0.5, -0.5),
+        ).cast_to_unstructured_grid()
+        mesh = left.merge(right)
+        viewer = MeshVisualisation(
+            mesh,
+            "strain",
+            scalar_frames=np.array((1.0, 2.0)),
+            association="cell",
+            off_screen=True,
+        )
+        self.addCleanup(viewer.close)
+
+        slices = viewer.show_slices(render=False)
+
+        self.assertGreater(slices[0].n_cells, 0)
+        self.assertEqual(slices[0].bounds.x_min, slices[0].bounds.x_max)
+        self.assertNotEqual(slices[0].bounds.x_min, mesh.center[0])
+        self.assertTrue(viewer.slice_settings["ensure_visible"])
+
     def test_public_picker_boundary_reports_original_ids(self) -> None:
         selected: list[np.ndarray] = []
         self.viewer.configure_pick_handler(selected.append, additive=True)

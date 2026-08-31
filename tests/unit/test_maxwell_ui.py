@@ -8,7 +8,7 @@ import numpy as np
 import pyvista as pv
 
 from brain_strain.simulation import simulate_generalized_maxwell_strain
-from brain_strain.viewer.app import BrainUI
+from brain_strain.viewer.app import BrainUI, simulation_case_difference
 
 
 class MaxwellSliderTests(unittest.TestCase):
@@ -111,6 +111,128 @@ class MaxwellSliderTests(unittest.TestCase):
             viewer.maxwell_branch_slider,
             viewer.parameter_plotter.widgets.slider_widgets,
         )
+
+    def test_case_selector_generates_single_and_dual_views(self) -> None:
+        viewer = self.viewer
+        cases = viewer.simulation_case_series
+
+        self.assertGreaterEqual(
+            viewer.plotter.render_window.GetNumberOfLayers(),
+            2,
+        )
+        self.assertEqual(viewer._controls_overlay_renderer.GetLayer(), 1)
+        self.assertIs(
+            viewer.time_slider.GetCurrentRenderer(),
+            viewer._controls_overlay_renderer,
+        )
+        self.assertIs(
+            viewer.threshold_slider.GetCurrentRenderer(),
+            viewer._controls_overlay_renderer,
+        )
+        self.assertEqual(set(cases), {"A", "B"})
+        self.assertEqual(viewer.selected_simulation_cases, ("A",))
+        viewer.show_slices(True)
+        self.assertTrue(viewer.state.show_slices)
+
+        selected = viewer.select_simulation_cases(("A", "B"))
+
+        self.assertEqual(selected, ("A", "B"))
+        self.assertFalse(viewer.state.show_slices)
+        self.assertEqual(viewer.slices_button.GetEnabled(), 0)
+        self.assertIsNotNone(viewer._case_b_actor)
+        self.assertEqual(
+            tuple(viewer.plotter.renderers[0].viewport),
+            (0.0, 0.0, 0.5, 0.78),
+        )
+        self.assertEqual(
+            tuple(viewer.plotter.renderers[1].viewport),
+            (0.5, 0.0, 1.0, 0.78),
+        )
+        self.assertTrue(viewer._controls_background_renderer.GetDraw())
+        model_top = viewer.plotter.renderers[0].viewport[3]
+        for slider in (viewer.time_slider, viewer.threshold_slider):
+            representation = slider.GetRepresentation()
+            self.assertGreater(
+                representation.GetPoint1Coordinate().GetValue()[1],
+                model_top,
+            )
+            self.assertGreater(
+                representation.GetPoint2Coordinate().GetValue()[1],
+                model_top,
+            )
+        self.assertIs(
+            viewer.plotter.renderers[0].GetActiveCamera(),
+            viewer.plotter.renderers[1].GetActiveCamera(),
+        )
+
+        viewer.select_simulation_cases("B")
+        self.assertEqual(viewer.selected_simulation_cases, ("B",))
+        np.testing.assert_allclose(viewer.scalar_series, cases["B"])
+        self.assertEqual(viewer.slices_button.GetEnabled(), 1)
+        self.assertFalse(viewer._controls_background_renderer.GetDraw())
+        self.assertIsNot(
+            viewer.plotter.renderers[0].GetActiveCamera(),
+            viewer.plotter.renderers[1].GetActiveCamera(),
+        )
+        self.assertEqual(len(viewer.show_slices(True)), 3)
+
+    def test_sagittal_camera_survives_a_scene_refresh(self) -> None:
+        viewer = self.viewer
+        viewer.show_slices(True)
+        sagittal_renderer = viewer._slice_panel_renderers[0]
+        direction_before = np.asarray(
+            sagittal_renderer.GetActiveCamera().GetDirectionOfProjection()
+        )
+
+        viewer._refresh_scene()
+
+        direction_after = np.asarray(
+            sagittal_renderer.GetActiveCamera().GetDirectionOfProjection()
+        )
+        np.testing.assert_allclose(direction_before, (-1.0, 0.0, 0.0))
+        np.testing.assert_allclose(direction_after, direction_before)
+        self.assertTrue(sagittal_renderer.GetDraw())
+        self.assertIn("ui-2d-slice-0", sagittal_renderer.actors)
+
+    def test_diverging_colormap_marks_sign_similarity_and_missing(self) -> None:
+        values = simulation_case_difference(
+            np.array((3.0, 1.0, 2.0, np.nan, 4.0)),
+            np.array((1.0, 2.0, 2.0 + 1e-10, 5.0, np.nan)),
+        )
+
+        self.assertGreater(values[0], 0.0)
+        self.assertLess(values[1], 0.0)
+        self.assertEqual(values[2], 0.0)
+        self.assertTrue(np.isnan(values[3]))
+        self.assertTrue(np.isnan(values[4]))
+
+        self.assertTrue(self.viewer.show_diverging_colormap())
+        self.assertEqual(
+            self.viewer.selected_simulation_cases,
+            ("A", "B"),
+        )
+        self.assertTrue(self.viewer.state.diverging_colormap)
+        self.assertEqual(
+            tuple(self.viewer.plotter.renderers[0].viewport),
+            (0.0, 0.0, 1.0, 1.0),
+        )
+        self.assertIsNone(self.viewer._case_b_actor)
+        self.assertFalse(self.viewer.plotter.renderers[1].GetDraw())
+        self.assertFalse(
+            self.viewer._controls_background_renderer.GetDraw()
+        )
+        self.assertIn(
+            "__ui_simulation_case_a_minus_b__",
+            self.viewer.visualizer.mesh.cell_data,
+        )
+        lookup_table = self.viewer.visualizer.main_actor.mapper.lookup_table
+        self.assertEqual(lookup_table.values[0, :3].tolist(), [0, 0, 255])
+        self.assertEqual(
+            lookup_table.values[len(lookup_table.values) // 2, :3].tolist(),
+            [255, 255, 255],
+        )
+        self.assertEqual(lookup_table.values[-1, :3].tolist(), [255, 0, 0])
+        self.assertEqual(tuple(lookup_table.nan_color.int_rgb), (128, 128, 128))
 
     def test_parameter_layout_reflows_for_a_narrow_window(self) -> None:
         viewer = self.viewer
@@ -256,14 +378,43 @@ class MaxwellSliderTests(unittest.TestCase):
         export_data = viewer._build_result_export_data()
         self.assertEqual(
             [series.source_type for series in export_data.series],
-            ["Real", "Simulated"],
+            ["Real", "Simulated", "Simulated"],
         )
+        self.assertIn("Case A", export_data.series[1].source_name)
+        self.assertIn("Case B", export_data.series[2].source_name)
 
         with TemporaryDirectory() as directory:
             saved = viewer.export_results(Path(directory) / "comparison.xlsx")
             assert saved is not None
             self.assertTrue(saved.is_file())
             self.assertGreater(saved.stat().st_size, 1000)
+
+    def test_selected_case_is_restored_after_returning_from_real_data(self) -> None:
+        mesh = pv.ImageData(dimensions=(3, 3, 3))
+        times = np.array((0.0, 0.1), dtype=float)
+        real_values = np.vstack(
+            (
+                np.linspace(0.01, 0.08, mesh.n_cells),
+                np.linspace(0.02, 0.16, mesh.n_cells),
+            )
+        )
+        viewer = BrainUI(
+            mesh,
+            times,
+            real_values,
+            off_screen=True,
+            enable_picking=False,
+            render=False,
+        )
+        self.addCleanup(viewer.close)
+
+        viewer.select_simulation_cases("B")
+        case_b = viewer.simulation_case_series["B"]
+        viewer.show_simulation_results(False)
+        viewer.show_simulation_results(True)
+
+        self.assertEqual(viewer.selected_simulation_cases, ("B",))
+        np.testing.assert_allclose(viewer.scalar_series, case_b)
 
 
 if __name__ == "__main__":

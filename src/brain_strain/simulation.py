@@ -32,6 +32,14 @@ import pyvista as pv
 
 ImpactMode = Literal["neck-rotation", "neck-extension"]
 ModulusKind = Literal["G0", "E0"]
+SimulationCase = Literal["A", "B"]
+
+SIMULATION_CASE_ROTATION_AXES: dict[
+    SimulationCase, tuple[float, float, float]
+] = {
+    "A": (0.0, 0.0, 1.0),
+    "B": (1.0, 0.0, 0.0),
+}
 
 REFERENCE_FRAME_INTERVAL_SECONDS = 0.018
 REFERENCE_FRAME_COUNT = 10
@@ -449,6 +457,50 @@ def simulate_generalized_maxwell_strain(
     return time_values, np.asarray(maximum_shear_strain, dtype=np.float64)
 
 
+def simulate_generalized_maxwell_cases(
+    mesh: pv.DataSet,
+    *,
+    frame_count: int = REFERENCE_FRAME_COUNT,
+    duration: float = REFERENCE_DURATION_SECONDS,
+    times: npt.ArrayLike | None = None,
+    model: GeneralizedMaxwellModel = DEFAULT_MAXWELL_MODEL,
+    impact_mode: ImpactMode = "neck-rotation",
+    target_mean_maximum_shear_strain: float | None = None,
+) -> tuple[
+    npt.NDArray[np.float64],
+    dict[SimulationCase, npt.NDArray[np.float64]],
+]:
+    """Generate the fixed A/B rotation-axis simulation presets.
+
+    Both cases use the same material model, loading parameters, and time
+    samples. Only the rotation axis changes: Case A uses ``(0, 0, 1)`` and
+    Case B uses ``(1, 0, 0)``.
+    """
+    case_times, case_a = simulate_generalized_maxwell_strain(
+        mesh,
+        frame_count=frame_count,
+        duration=duration,
+        times=times,
+        model=model,
+        impact_mode=impact_mode,
+        target_mean_maximum_shear_strain=(
+            target_mean_maximum_shear_strain
+        ),
+        rotation_axis=SIMULATION_CASE_ROTATION_AXES["A"],
+    )
+    _, case_b = simulate_generalized_maxwell_strain(
+        mesh,
+        times=case_times,
+        model=model,
+        impact_mode=impact_mode,
+        target_mean_maximum_shear_strain=(
+            target_mean_maximum_shear_strain
+        ),
+        rotation_axis=SIMULATION_CASE_ROTATION_AXES["B"],
+    )
+    return case_times, {"A": case_a, "B": case_b}
+
+
 __all__ = [
     "DEFAULT_MAXWELL_MODEL",
     "DEFAULT_TAU_MAX_SECONDS",
@@ -466,8 +518,11 @@ __all__ = [
     "REFERENCE_FRAME_COUNT",
     "REFERENCE_FRAME_INTERVAL_SECONDS",
     "REFERENCE_MEAN_MAXIMUM_SHEAR_STRAIN",
+    "SIMULATION_CASE_ROTATION_AXES",
+    "SimulationCase",
     "default_branch_fractions",
     "generalized_maxwell_strain_response",
     "logarithmic_relaxation_times",
+    "simulate_generalized_maxwell_cases",
     "simulate_generalized_maxwell_strain",
 ]

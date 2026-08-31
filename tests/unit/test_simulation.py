@@ -8,10 +8,12 @@ import pyvista as pv
 from brain_strain.simulation import (
     REFERENCE_DURATION_SECONDS,
     REFERENCE_FRAME_COUNT,
+    SIMULATION_CASE_ROTATION_AXES,
     GeneralizedMaxwellModel,
     default_branch_fractions,
     generalized_maxwell_strain_response,
     logarithmic_relaxation_times,
+    simulate_generalized_maxwell_cases,
     simulate_generalized_maxwell_strain,
 )
 
@@ -94,6 +96,18 @@ class GeneralizedMaxwellTests(unittest.TestCase):
 
         np.testing.assert_array_equal(times, requested)
         self.assertEqual(strain.shape, (requested.size, mesh.n_cells))
+
+    def test_fixed_axis_presets_share_one_timeline(self) -> None:
+        mesh = pv.ImageData(dimensions=(5, 4, 3))
+
+        times, cases = simulate_generalized_maxwell_cases(mesh)
+
+        self.assertEqual(SIMULATION_CASE_ROTATION_AXES["A"], (0.0, 0.0, 1.0))
+        self.assertEqual(SIMULATION_CASE_ROTATION_AXES["B"], (1.0, 0.0, 0.0))
+        self.assertEqual(set(cases), {"A", "B"})
+        self.assertEqual(cases["A"].shape, (times.size, mesh.n_cells))
+        self.assertEqual(cases["B"].shape, cases["A"].shape)
+        self.assertFalse(np.allclose(cases["A"], cases["B"]))
 
     def test_relaxation_times_change_the_transient_shape(self) -> None:
         mesh = pv.ImageData(dimensions=(4, 4, 4))
